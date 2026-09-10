@@ -214,7 +214,7 @@ namespace CAIVR.Dialogue
         {
             SetState(ConversationState.Speaking);
 
-            yield return new WaitForSeconds(Speak(node.id, node.speakerLine));
+            yield return Speak(node.id, node.speakerLine);
 
             if (node.isEnd)
             {
@@ -226,20 +226,31 @@ namespace CAIVR.Dialogue
         }
 
         /// <summary>
-        /// Delivers one line: raises the subtitle event, plays the baked audio,
-        /// and reports how long to wait before the student's turn.
+        /// Delivers one line: raises the subtitle event, speaks it, and yields
+        /// until the audio has finished.
+        ///
+        /// The player handles the fallback chain itself - baked clip, then
+        /// runtime synthesis, then a timed subtitle - so an unscripted line
+        /// still gets a voice and a missing voice service still gets read.
         /// </summary>
-        float Speak(string clipKey, string line)
+        IEnumerator Speak(string clipKey, string line)
         {
             ProfessorLine?.Invoke(line);
 
-            if (voice != null && voice.TryPlay(clipKey, out var clipLength))
-                return clipLength;
+            if (voice != null)
+            {
+                yield return voice.SpeakRoutine(clipKey, line, DurationFor(line));
+                yield break;
+            }
 
-            // No audio baked for this line - hold the subtitle for a readable
-            // beat rather than skipping straight past it.
-            return DurationFor(line);
+            yield return new WaitForSeconds(DurationFor(line));
         }
+
+        /// <summary>
+        /// Speaks a line that was never authored - a generated reply, say - so
+        /// it goes straight to runtime synthesis with no clip key to look up.
+        /// </summary>
+        public IEnumerator SpeakUnscripted(string line) => Speak(null, line);
 
         /// <summary>
         /// Fallback pacing when a line has no audio. Scales with length so long
@@ -341,7 +352,7 @@ namespace CAIVR.Dialogue
                 ? $"{node.id}_reprompt"
                 : VoiceLinePlayer.FallbackRepromptKey;
 
-            yield return new WaitForSeconds(Speak(clipKey, line));
+            yield return Speak(clipKey, line);
 
             Listen();
         }

@@ -1,31 +1,53 @@
+using System.Collections;
+using System.Text;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace CAIVR.Speech
 {
     /// <summary>
-    /// Plays the professor's pre-generated voice lines.
+    /// Gives the professor a voice, from two sources.
     ///
-    /// The audio is baked to WAV ahead of time and shipped as assets, so at
-    /// runtime this is nothing but AudioSource playback. That is the whole
-    /// point: no TTS engine, no platform speech service, no OS settings, no
-    /// permissions, no network. It behaves identically on Quest, PC VR, WebGL
-    /// and in the Editor because playing an AudioClip is the one thing every
-    /// Unity platform can do.
+    /// 1. Baked clips for every authored line. Zero latency, no network, no
+    ///    dependency - these ship as ordinary AudioClips and play identically on
+    ///    Quest, PC VR, WebGL and in the Editor.
     ///
-    /// Regenerate the audio with CAIVR > Generate Voice Lines after editing any
-    /// line in the conversation JSON.
+    /// 2. A local TTS service for text nobody wrote in advance - anything a
+    ///    language model produces mid-conversation. Costs about 1.5-2.5s the
+    ///    first time a given sentence is spoken, then it is cached and instant.
+    ///
+    /// The split matters: the scripted conversation never waits on the network,
+    /// so the demo stays snappy, and dynamic replies are still possible when we
+    /// need them. Start the service with:  python Tools/tts_server.py
     /// </summary>
     public sealed class VoiceLinePlayer : MonoBehaviour
     {
         /// <summary>Used when a node has no reprompt line of its own.</summary>
         public const string FallbackRepromptKey = "_fallback_reprompt";
 
+        [Header("Baked audio")]
         [Tooltip("Which baked voice set to play. Each TTS engine writes its own folder, " +
                  "so switching engines is changing this string - no code, no rebuild.")]
-        [SerializeField] string resourceFolder = "CAIVR/VO_sapi";
+        [SerializeField] string resourceFolder = "CAIVR/VO_edge";
 
         [Tooltip("Seconds of silence left after a line before the mic opens.")]
         [SerializeField] float tailPadding = 0.25f;
+
+        [Header("Runtime synthesis (for unscripted lines)")]
+        [Tooltip("Speak text that has no baked clip by calling the local TTS service.")]
+        [SerializeField] bool useRuntimeSynthesis = true;
+
+        [SerializeField] string ttsEndpoint = "http://127.0.0.1:5111/tts";
+
+        [Tooltip("Give up and fall back to timed subtitles after this long.")]
+        [SerializeField] int requestTimeoutSeconds = 12;
+
+        AudioSource _source;
+
+        public bool IsPlaying => _source != null && _source.isPlaying;
+
+        /// <summary>The AudioSource, for lipsync to read amplitude from.</summary>
+        public AudioSource Source => _source;
 
         public string ResourceFolder
         {
@@ -33,12 +55,8 @@ namespace CAIVR.Speech
             set => resourceFolder = value;
         }
 
-        AudioSource _source;
-
-        public bool IsPlaying => _source != null && _source.isPlaying;
-
-        /// <summary>The clip currently playing, for lipsync to read amplitude from.</summary>
-        public AudioSource Source => _source;
+        /// <summary>True when the last line came from the network rather than a baked clip.</summary>
+        public bool LastLineWasSynthesized { get; private set; }
 
         void Awake()
         {
@@ -54,9 +72,43 @@ namespace CAIVR.Speech
         }
 
         /// <summary>
-        /// Plays the line for <paramref name="key"/> if audio exists for it.
-        /// Returns false when there is no clip, so the caller can fall back to
-        /// timing the subtitle instead of going silent.
+        /// Speaks a line and yields until it has finished.
+        ///
+        /// Tries the baked clip first, then runtime synthesis, then falls back to
+        /// simply holding the subtitle on screen for <paramref name="fallbackSeconds"/>.
+        /// A missing voice service degrades to a readable subtitle - never to silence
+        /// or a stalled conversation.
+        /// </summary>
+        public IEnumerator SpeakRoutine(string key, string text, float fallbackSeconds)
+        {
+            LastLineWasSynthesized = false;
+
+            if (TryPlay(key, out var bakedLength))
+            {
+                yield return new WaitForSeconds(bakedLength);
+                yield break;
+            }
+
+            if (useRuntimeSynthesis && !string.IsNullOrWhiteSpace(text))
+            {
+                AudioClip clip = null;
+                yield return Synthesize(text, result => clip = result);
+
+                if (clip != null)
+                {
+                    LastLineWasSynthesized = true;
+                    PlayClip(clip);
+                    yield return new WaitForSeconds(clip.length + tailPadding);
+                    yield break;
+                }
+            }
+
+            yield return new WaitForSeconds(fallbackSeconds);
+        }
+
+        /// <summary>
+        /// Plays the baked line for <paramref name="key"/> if one exists.
+        /// Returns false when there is no clip, so the caller can decide what to do.
         /// </summary>
         public bool TryPlay(string key, out float duration)
         {
@@ -66,12 +118,71 @@ namespace CAIVR.Speech
             var clip = Resources.Load<AudioClip>($"{resourceFolder}/{key}");
             if (clip == null) return false;
 
+            PlayClip(clip);
+            duration = clip.length + tailPadding;
+            return true;
+        }
+
+        void PlayClip(AudioClip clip)
+        {
             _source.Stop();
             _source.clip = clip;
             _source.Play();
+        }
 
-            duration = clip.length + tailPadding;
-            return true;
+        IEnumerator Synthesize(string text, System.Action<AudioClip> onDone)
+        {
+            var payload = Encoding.UTF8.GetBytes(
+                $"{{\"text\":{Quote(text)}}}");
+
+            using var request = new UnityWebRequest(ttsEndpoint, UnityWebRequest.kHttpVerbPOST);
+            request.uploadHandler = new UploadHandlerRaw(payload);
+
+            var handler = new DownloadHandlerAudioClip(ttsEndpoint, AudioType.MPEG);
+            handler.streamAudio = false;
+            request.downloadHandler = handler;
+
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.timeout = requestTimeoutSeconds;
+
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning(
+                    $"[CAIVR] Runtime TTS unavailable ({request.responseCode}): {request.error}. " +
+                    "Start it with: python Tools/tts_server.py");
+                onDone(null);
+                yield break;
+            }
+
+            onDone(handler.audioClip);
+        }
+
+        /// <summary>Minimal JSON string escaping - the payload is a single field.</summary>
+        static string Quote(string value)
+        {
+            var builder = new StringBuilder(value.Length + 16);
+            builder.Append('"');
+
+            foreach (var c in value)
+            {
+                switch (c)
+                {
+                    case '"': builder.Append("\\\""); break;
+                    case '\\': builder.Append("\\\\"); break;
+                    case '\n': builder.Append("\\n"); break;
+                    case '\r': builder.Append("\\r"); break;
+                    case '\t': builder.Append("\\t"); break;
+                    default:
+                        if (c < 0x20) builder.Append("\\u").Append(((int)c).ToString("x4"));
+                        else builder.Append(c);
+                        break;
+                }
+            }
+
+            builder.Append('"');
+            return builder.ToString();
         }
 
         public void Stop()
