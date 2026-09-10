@@ -100,6 +100,12 @@ namespace CAIVR.Dialogue
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
 
+            // Some providers sit behind Cloudflare, which rejects unfamiliar
+            // user agents with a 403 before the request ever reaches the API -
+            // a failure that looks exactly like a bad key if you do not know to
+            // look for it.
+            request.SetRequestHeader("User-Agent", "CAIVR/1.0 (Unity)");
+
             if (_apiKey != null)
                 request.SetRequestHeader("Authorization", $"Bearer {_apiKey}");
 
