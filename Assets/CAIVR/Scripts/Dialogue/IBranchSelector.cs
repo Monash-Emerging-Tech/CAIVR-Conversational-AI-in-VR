@@ -35,15 +35,30 @@ namespace CAIVR.Dialogue
         /// <summary>Why this branch won. Shown in the debug HUD so we can eyeball quality.</summary>
         public readonly string Rationale;
 
+        /// <summary>
+        /// An in-character answer to something the student asked that no branch
+        /// covers - a follow-up question, a clarification.
+        ///
+        /// A dialogue tree can only travel where branches exist, so without this
+        /// a perfectly reasonable question gets understood correctly and then
+        /// ignored, which is worse than misunderstanding it. When this is set,
+        /// the professor answers and then re-asks, instead of steamrolling on.
+        /// </summary>
+        public readonly string SideReply;
+
         public bool Matched => BranchIndex >= 0;
 
-        public BranchDecision(int branchIndex, float confidence, string rationale)
+        public bool HasSideReply => !string.IsNullOrWhiteSpace(SideReply);
+
+        public BranchDecision(int branchIndex, float confidence, string rationale, string sideReply = null)
         {
             BranchIndex = branchIndex;
             Confidence = confidence;
             Rationale = rationale;
+            SideReply = sideReply;
         }
 
-        public static BranchDecision NoMatch(string why) => new BranchDecision(-1, 0f, why);
+        public static BranchDecision NoMatch(string why, string sideReply = null)
+            => new BranchDecision(-1, 0f, why, sideReply);
     }
 }

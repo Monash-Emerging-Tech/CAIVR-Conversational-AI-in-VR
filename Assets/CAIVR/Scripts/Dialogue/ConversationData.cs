@@ -23,6 +23,18 @@ namespace CAIVR.Dialogue
         /// </summary>
         public string[] contextVariants;
 
+        /// <summary>
+        /// Ground truth about this scenario's world: who the professor is, what
+        /// the unit is, what the assignment requires, what the policies are.
+        ///
+        /// System 2 answers student questions the tree has no branch for, and a
+        /// model with no facts will cheerfully invent them - it named a unit
+        /// that does not exist on the first run. Telling it "do not invent" does
+        /// not hold; giving it the answers does. Anything a student might
+        /// plausibly ask should be listed here.
+        /// </summary>
+        public string[] worldFacts;
+
         public string startNodeId;
         public DialogueNode[] nodes;
 

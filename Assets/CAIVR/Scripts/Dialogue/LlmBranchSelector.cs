@@ -42,6 +42,16 @@ namespace CAIVR.Dialogue
         readonly string _model;
         readonly int _timeoutSeconds;
 
+        /// <summary>
+        /// Ground truth about the scenario, supplied by the runner when a script
+        /// is loaded. Without it the model answers off-tree questions from
+        /// imagination; with it, it answers from the script's own world.
+        /// </summary>
+        string[] _worldFacts = System.Array.Empty<string>();
+
+        public void SetWorldFacts(string[] facts)
+            => _worldFacts = facts ?? System.Array.Empty<string>();
+
         public string Name => string.IsNullOrEmpty(_apiKey)
             ? "System 2 (local LLM)"
             : "System 2 (cloud LLM)";
@@ -89,10 +99,14 @@ namespace CAIVR.Dialogue
                 temperature = 0f,   // the same sentence must not wander branches
                 messages = new[]
                 {
-                    new Message { role = "system", content = BuildSystemPrompt() },
+                    new Message { role = "system", content = BuildSystemPrompt() + BuildFacts() },
                     new Message { role = "user", content = BuildUserPrompt(node, utterance) },
                 },
                 response_format = new ResponseFormat { type = "json_object" },
+                // Bounds worst-case latency. The answer is a small JSON object;
+                // without a cap a model that decides to think at length leaves
+                // the student staring at a silent professor for ten seconds.
+                max_tokens = 400,
             });
 
             using var request = new UnityWebRequest(_endpoint, UnityWebRequest.kHttpVerbPOST);
@@ -143,6 +157,25 @@ namespace CAIVR.Dialogue
             onDecided(decision);
         }
 
+        string BuildFacts()
+        {
+            if (_worldFacts.Length == 0) return string.Empty;
+
+            var builder = new StringBuilder();
+            builder.AppendLine();
+            builder.AppendLine();
+            builder.AppendLine("Facts about this scenario. Treat these as true, and answer " +
+                               "from them rather than from general knowledge:");
+
+            foreach (var fact in _worldFacts)
+            {
+                if (string.IsNullOrWhiteSpace(fact)) continue;
+                builder.Append("- ").AppendLine(fact.Trim());
+            }
+
+            return builder.ToString();
+        }
+
         static string Truncate(string text)
         {
             if (string.IsNullOrEmpty(text)) return "";
@@ -158,9 +191,27 @@ namespace CAIVR.Dialogue
             "rather than exact wording.\n" +
             "Reply with ONLY this JSON object and nothing else:\n" +
             "{\"branch\": <0-based index, or -1 if none fit>, " +
-            "\"confidence\": <number between 0 and 1>, \"why\": \"<one short sentence>\"}\n" +
+            "\"confidence\": <number between 0 and 1>, \"why\": \"<one short sentence>\", " +
+            "\"reply\": \"<see below, or empty>\"}\n" +
+            "\n" +
             "Use -1 when the reply is off-topic, unintelligible, or matches no " +
-            "option. Do not invent a branch to be helpful.";
+            "option. Do not invent a branch to be helpful.\n" +
+            "\n" +
+            "When branch is -1 because the student asked a reasonable question " +
+            "that no branch covers, write \"reply\": the professor's answer to " +
+            "it, in character. One or two short sentences, spoken aloud, plain " +
+            "prose with no markdown. Do not ask the student a new question and " +
+            "do not repeat what you just said; the simulation will return to its " +
+            "own question afterwards.\n" +
+            "\n" +
+            "NEVER invent specifics that are not established in the conversation " +
+            "above - unit names or codes, dates, marks, staff names, or policies. " +
+            "A confidently wrong answer teaches the student something false. " +
+            "When you do not know, say so the way a real academic would: point " +
+            "them to the unit guide, or say you will check and email them.\n" +
+            "\n" +
+            "Leave \"reply\" empty when the student said nothing worth answering, " +
+            "was unintelligible, or when you matched a branch.";
 
         static string BuildUserPrompt(DialogueNode node, string utterance)
         {
@@ -206,7 +257,8 @@ namespace CAIVR.Dialogue
 
             if (reply.branch < 0 || reply.branch >= branchCount)
                 return BranchDecision.NoMatch(
-                    string.IsNullOrWhiteSpace(reply.why) ? "Model matched no branch." : reply.why);
+                    string.IsNullOrWhiteSpace(reply.why) ? "Model matched no branch." : reply.why,
+                    reply.reply);
 
             return new BranchDecision(reply.branch, reply.confidence, reply.why);
         }
@@ -239,6 +291,7 @@ namespace CAIVR.Dialogue
             public Message[] messages;
             public float temperature;
             public ResponseFormat response_format;
+            public int max_tokens;
         }
 
         [Serializable]
@@ -272,6 +325,9 @@ namespace CAIVR.Dialogue
             public int branch = -1;
             public float confidence;
             public string why;
+
+            /// <summary>An in-character answer when the student asked something off-tree.</summary>
+            public string reply;
         }
     }
 }

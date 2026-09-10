@@ -73,6 +73,10 @@ namespace CAIVR.Dialogue
         [Tooltip("Give up re-prompting after this many unmatched replies and take the first branch.")]
         [SerializeField] int maxRepromptsPerNode = 2;
 
+        [Tooltip("How many off-tree questions the professor will answer at one node " +
+                 "before insisting on an answer. Stops a student stalling forever.")]
+        [SerializeField] int maxAsidesPerNode = 3;
+
         [Header("Wiring")]
         [SerializeField] SpeechService speech;
         [SerializeField] VoiceLinePlayer voice;
@@ -81,6 +85,7 @@ namespace CAIVR.Dialogue
         DialogueNode _currentNode;
         IBranchSelector _selector;
         int _repromptCount;
+        int _asideCount;
 
         public ConversationState State { get; private set; } = ConversationState.Idle;
         public string SelectorName => _selector?.Name ?? "none";
@@ -199,6 +204,11 @@ namespace CAIVR.Dialogue
                 return;
             }
 
+            // Ground System 2 in this script's world before it has to answer
+            // anything the tree does not cover.
+            if (_selector is LlmBranchSelector grounded)
+                grounded.SetWorldFacts(_conversation.worldFacts);
+
             CurrentContext = _conversation.PickContext();
             SetState(ConversationState.ShowingContext);
             ContextReady?.Invoke(CurrentContext);
@@ -238,6 +248,7 @@ namespace CAIVR.Dialogue
         {
             _currentNode = node;
             _repromptCount = 0;
+            _asideCount = 0;
 
             if (node == null)
             {
@@ -388,6 +399,18 @@ namespace CAIVR.Dialogue
                 return;
             }
 
+            // The student asked something real that no branch covers. Answering
+            // it and then returning to the question is the difference between a
+            // conversation and a form: understanding someone and then ignoring
+            // them is worse than not understanding them at all.
+            if (decision.HasSideReply && _asideCount < maxAsidesPerNode)
+            {
+                _asideCount++;
+                StopAllCoroutines();
+                StartCoroutine(AnswerAside(node, decision.SideReply));
+                return;
+            }
+
             _repromptCount++;
 
             if (_repromptCount > maxRepromptsPerNode && node.branches.Length > 0)
@@ -408,6 +431,32 @@ namespace CAIVR.Dialogue
 
             StopAllCoroutines();
             StartCoroutine(Reprompt(node));
+        }
+
+        /// <summary>
+        /// Answers a question the tree has no branch for, then puts its own
+        /// question back on the table so the thread is not lost.
+        ///
+        /// The aside has no baked audio - it did not exist until a moment ago -
+        /// so it goes through runtime synthesis. The re-ask does have baked
+        /// audio, so the conversation lands back on solid ground instantly.
+        /// </summary>
+        IEnumerator AnswerAside(DialogueNode node, string reply)
+        {
+            SetState(ConversationState.Speaking);
+
+            yield return Speak(null, reply);
+
+            // The reprompt line is a shorter restatement of the node's question,
+            // which is exactly what is wanted after a digression - re-reading the
+            // full opening line would sound like the professor lost their place.
+            var hasReprompt = !string.IsNullOrWhiteSpace(node.reprompt);
+
+            yield return hasReprompt
+                ? Speak($"{node.id}_reprompt", node.reprompt)
+                : Speak(node.id, node.speakerLine);
+
+            Listen();
         }
 
         IEnumerator Reprompt(DialogueNode node)
