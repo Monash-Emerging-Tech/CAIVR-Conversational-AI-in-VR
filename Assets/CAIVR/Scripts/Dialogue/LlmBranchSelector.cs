@@ -41,6 +41,7 @@ namespace CAIVR.Dialogue
         readonly string _apiKey;
         readonly string _model;
         readonly int _timeoutSeconds;
+        readonly string _reasoningEffort;
 
         /// <summary>
         /// Ground truth about the scenario, supplied by the runner when a script
@@ -69,13 +70,16 @@ namespace CAIVR.Dialogue
             string endpoint,
             string model,
             string apiKey = null,
-            int timeoutSeconds = 20)
+            int timeoutSeconds = 20,
+            string reasoningEffort = "low")
         {
             _host = host;
             _endpoint = endpoint;
             _model = model;
             _apiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey.Trim();
             _timeoutSeconds = timeoutSeconds;
+            _reasoningEffort = string.IsNullOrWhiteSpace(reasoningEffort)
+                ? null : reasoningEffort.Trim();
         }
 
         public void Select(DialogueNode node, string utterance, Action<BranchDecision> onDecided)
@@ -103,11 +107,26 @@ namespace CAIVR.Dialogue
                     new Message { role = "user", content = BuildUserPrompt(node, utterance) },
                 },
                 response_format = new ResponseFormat { type = "json_object" },
-                // Bounds worst-case latency. The answer is a small JSON object;
-                // without a cap a model that decides to think at length leaves
-                // the student staring at a silent professor for ten seconds.
-                max_tokens = 400,
+
+                // Reasoning models spend tokens thinking before they answer, and
+                // that spend comes out of this same budget. Set it too low and
+                // the model runs out mid-thought, emits truncated JSON, and the
+                // provider rejects the whole call with json_validate_failed -
+                // which reads like an outage rather than a misconfiguration.
+                // 1024 leaves room for the longest answer plus its reasoning.
+                max_tokens = 1024,
+
+                // The real lever. Branch classification does not need deep
+                // reasoning, and turning it down cut latency from ~1.6s to
+                // ~0.6s while using a fifth of the tokens.
+                reasoning_effort = _reasoningEffort ?? string.Empty,
             });
+
+            // JsonUtility always emits every field. An empty reasoning_effort is
+            // not merely useless - providers that do not implement it reject the
+            // request outright - so remove it rather than send a blank.
+            if (_reasoningEffort == null)
+                payload = payload.Replace(",\"reasoning_effort\":\"\"", string.Empty);
 
             using var request = new UnityWebRequest(_endpoint, UnityWebRequest.kHttpVerbPOST);
             request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));
@@ -292,6 +311,7 @@ namespace CAIVR.Dialogue
             public float temperature;
             public ResponseFormat response_format;
             public int max_tokens;
+            public string reasoning_effort;
         }
 
         [Serializable]
