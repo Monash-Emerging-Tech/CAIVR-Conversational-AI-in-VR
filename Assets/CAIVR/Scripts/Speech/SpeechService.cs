@@ -21,6 +21,13 @@ namespace CAIVR.Speech
 
         /// <summary>Use the mic if it is genuinely usable, otherwise typing.</summary>
         Auto,
+
+        /// <summary>
+        /// Real microphone input via a Whisper endpoint. Needs a mic and an API
+        /// key, but no OS settings - and unlike Windows dictation it runs on
+        /// Quest and in WebGL builds.
+        /// </summary>
+        Whisper,
     }
 
     /// <summary>
@@ -69,7 +76,7 @@ namespace CAIVR.Speech
             Debug.Log($"[CAIVR] Speech backend: {_recognizer.BackendName}");
         }
 
-        static ISpeechRecognizer Create(SpeechBackend requested)
+        ISpeechRecognizer Create(SpeechBackend requested)
         {
             switch (requested)
             {
@@ -79,20 +86,33 @@ namespace CAIVR.Speech
                 case SpeechBackend.WindowsDictation:
                     return new WindowsDictationRecognizer();
 
+                case SpeechBackend.Whisper:
+                    return BuildWhisper();
+
                 default:
-                    // Probe rather than assume: dictation reports unavailable on
-                    // non-Windows platforms and on machines with the speech
-                    // service switched off, and we would rather degrade to
-                    // typing than hand the user a dead microphone button.
+                    // Probe rather than assume, and prefer the backend that will
+                    // still exist on a headset. Whisper needs a mic and a key;
+                    // dictation needs Windows with a privacy setting enabled;
+                    // typing always works. Degrading is better than handing the
+                    // student a microphone button that does nothing.
+                    var whisper = BuildWhisper();
+                    if (whisper.IsAvailable) return whisper;
+
                     var dictation = new WindowsDictationRecognizer();
                     if (dictation.IsAvailable) return dictation;
 
                     Debug.LogWarning(
-                        "[CAIVR] Windows dictation unavailable - falling back to typed input. " +
-                        "On Windows, check Settings > Privacy > Speech > Online speech recognition.");
+                        "[CAIVR] No usable microphone backend - falling back to typed input. " +
+                        "Whisper needs a microphone and an API key.");
                     return new KeyboardRecognizer();
             }
         }
+
+        WhisperRecognizer BuildWhisper() => new WhisperRecognizer(
+            this,
+            Menu.CaivrSettings.SttEndpoint,
+            Menu.CaivrSettings.SttModel,
+            Menu.CaivrSettings.ResolveLlmApiKey());
 
         void Teardown()
         {

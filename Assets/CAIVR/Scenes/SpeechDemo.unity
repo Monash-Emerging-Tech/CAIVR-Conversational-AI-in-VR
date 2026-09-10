@@ -168,8 +168,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CAIVR.Dialogue.ConversationRunner
   conversationResourcePath: CAIVR/Conversations/consultation_demo
   selectorMode: 0
-  ollamaEndpoint: http://localhost:11434/api/chat
-  ollamaModel: llama3.2
+  llmEndpoint: http://localhost:11434/v1/chat/completions
+  llmModel: qwen2.5:7b
+  llmApiKey: 
   contextDelaySeconds: 5
   secondsPerLine: 2.5
   maxRepromptsPerNode: 2
@@ -206,7 +207,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77fd0e2b16e430648b6a06ed844eb157, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CAIVR.Speech.SpeechService
-  backend: 0
+  backend: 2
   minimumConfidence: 0.3
 --- !u!82 &523259755
 AudioSource:

@@ -111,7 +111,14 @@ namespace CAIVR.Demo
                     break;
             }
 
-            if (keyboard.rKey.wasPressedThisFrame) runner.RepeatCurrentLine();
+            // Single-key shortcuts must not fire while the student is typing -
+            // otherwise every "r" in "report" re-triggers the professor's line
+            // and eats the sentence they were halfway through.
+            var typing = speech != null
+                         && speech.UsingKeyboardFallback
+                         && runner.State == ConversationState.Listening;
+
+            if (!typing && keyboard.rKey.wasPressedThisFrame) runner.RepeatCurrentLine();
 
             if (keyboard.escapeKey.wasPressedThisFrame &&
                 Application.CanStreamedLevelBeLoaded("MainMenu"))

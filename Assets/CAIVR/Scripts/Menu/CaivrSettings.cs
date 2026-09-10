@@ -75,6 +75,27 @@ namespace CAIVR.Menu
             set { PlayerPrefs.SetString(ApiKeyKey, value); PlayerPrefs.Save(); }
         }
 
+        const string SttEndpointKey = "caivr.stt.endpoint";
+        const string SttModelKey = "caivr.stt.model";
+
+        /// <summary>
+        /// Speech-to-text endpoint. Defaults to Groq, which serves Whisper on the
+        /// same key as the dialogue model. Any OpenAI-compatible transcription
+        /// endpoint works here.
+        /// </summary>
+        public static string SttEndpoint
+        {
+            get => PlayerPrefs.GetString(SttEndpointKey,
+                "https://api.groq.com/openai/v1/audio/transcriptions");
+            set { PlayerPrefs.SetString(SttEndpointKey, value); PlayerPrefs.Save(); }
+        }
+
+        public static string SttModel
+        {
+            get => PlayerPrefs.GetString(SttModelKey, "whisper-large-v3-turbo");
+            set { PlayerPrefs.SetString(SttModelKey, value); PlayerPrefs.Save(); }
+        }
+
         /// <summary>
         /// The key to use, preferring an environment variable so a developer's
         /// key stays in their shell rather than being written into the project.

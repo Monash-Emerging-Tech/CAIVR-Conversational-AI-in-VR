@@ -79,8 +79,8 @@ namespace CAIVR.Menu
             var reachable = request.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
 
             _llmStatus = reachable
-                ? $"{CaivrSettings.LlmModel}  ✓"
-                : "no endpoint reachable  ✗";
+                ? $"{CaivrSettings.LlmModel}  [ok]"
+                : "no endpoint reachable";
 
             RefreshRows();
         }
