@@ -103,10 +103,20 @@ namespace CAIVR.Dialogue
 
         public event Action Ended;
 
+        [Tooltip("Take the dialogue system choice from the main menu rather than the field above.")]
+        [SerializeField] bool useMenuSettings = true;
+
         void Awake()
         {
             if (speech == null) speech = FindFirstObjectByType<SpeechService>();
             if (voice == null) voice = FindFirstObjectByType<VoiceLinePlayer>();
+
+            // The menu is the source of truth when we came through it. Playing
+            // this scene directly from the Editor still works - it just uses
+            // whatever was last chosen, which is what you want while iterating.
+            if (useMenuSettings)
+                selectorMode = (SelectorMode)Menu.CaivrSettings.SelectorMode;
+
             _selector = BuildSelector();
         }
 

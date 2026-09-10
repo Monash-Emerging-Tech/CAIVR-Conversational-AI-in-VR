@@ -19,8 +19,46 @@ namespace CAIVR.EditorTools
     {
         const string SceneFolder = "Assets/CAIVR/Scenes";
         const string ScenePath = SceneFolder + "/SpeechDemo.unity";
+        const string MenuScenePath = SceneFolder + "/MainMenu.unity";
 
-        [MenuItem("CAIVR/Create Speech Demo Scene", priority = 0)]
+        /// <summary>
+        /// Builds both scenes and registers them, menu first so a build starts there.
+        /// </summary>
+        [MenuItem("CAIVR/Create Demo Scenes", priority = 0)]
+        public static void CreateAllScenes()
+        {
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+
+            CreateMenuScene();
+            CreateScene();
+
+            EditorBuildSettings.scenes = new[]
+            {
+                new EditorBuildSettingsScene(MenuScenePath, true),
+                new EditorBuildSettingsScene(ScenePath, true),
+            };
+
+            EditorSceneManager.OpenScene(MenuScenePath);
+            Debug.Log("[CAIVR] Both scenes created and added to Build Settings. Press Play.");
+        }
+
+        static void CreateMenuScene()
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            var cameraObject = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
+            cameraObject.tag = "MainCamera";
+            var camera = cameraObject.GetComponent<Camera>();
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.06f, 0.07f, 0.09f);
+
+            new GameObject("Main Menu").AddComponent<Menu.MainMenuController>();
+
+            Directory.CreateDirectory(SceneFolder);
+            EditorSceneManager.SaveScene(scene, MenuScenePath);
+        }
+
+        [MenuItem("CAIVR/Create Speech Demo Scene", priority = 1)]
         public static void CreateScene()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;

@@ -113,6 +113,13 @@ namespace CAIVR.Demo
 
             if (keyboard.rKey.wasPressedThisFrame) runner.RepeatCurrentLine();
 
+            if (keyboard.escapeKey.wasPressedThisFrame &&
+                Application.CanStreamedLevelBeLoaded("MainMenu"))
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+                return;
+            }
+
             Redraw();
         }
 
@@ -189,7 +196,10 @@ namespace CAIVR.Demo
                 ? ""
                 : $"<color=#7FD8FF>branch  {_lastDecision}</color>";
 
-            _footerText.text = BuildFooter();
+            var footer = BuildFooter();
+            _footerText.text = string.IsNullOrEmpty(footer)
+                ? "<b>ESC</b> menu"
+                : $"{footer}     <b>ESC</b> menu";
         }
 
         string BuildBody()
@@ -206,7 +216,11 @@ namespace CAIVR.Demo
                     return $"<b>Professor</b>\n\n{_professorLine}\n\n<color=#9BE59B>Conversation complete.</color>";
 
                 default:
-                    return $"<b>Professor</b>\n\n{_professorLine}";
+                    // Subtitles off still shows who is speaking - the student needs
+                    // to know it is their turn, they just do not get the words.
+                    return Menu.CaivrSettings.SubtitlesEnabled
+                        ? $"<b>Professor</b>\n\n{_professorLine}"
+                        : "<b>Professor</b>\n\n<color=#555555><i>(subtitles off)</i></color>";
             }
         }
 
@@ -280,9 +294,15 @@ namespace CAIVR.Demo
             AddBackdrop(canvasObject.transform);
 
             _headerText = AddText(canvasObject.transform, "Header",
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(48f, -64f), new Vector2(-48f, -16f), 24, TextAlignmentOptions.TopLeft);
+                new Vector2(0f, 1f), new Vector2(0.65f, 1f),
+                new Vector2(48f, -64f), new Vector2(0f, -16f), 24, TextAlignmentOptions.TopLeft);
             _headerText.color = new Color(0.55f, 0.75f, 0.9f);
+
+            var version = AddText(canvasObject.transform, "Version",
+                new Vector2(0.65f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, -64f), new Vector2(-48f, -16f), 22, TextAlignmentOptions.TopRight);
+            version.text = $"{Application.productName.ToUpperInvariant()} DEMO  v{Application.version}";
+            version.color = new Color(0.45f, 0.48f, 0.54f);
 
             _bodyText = AddText(canvasObject.transform, "Body",
                 new Vector2(0f, 0.45f), new Vector2(1f, 0.92f),

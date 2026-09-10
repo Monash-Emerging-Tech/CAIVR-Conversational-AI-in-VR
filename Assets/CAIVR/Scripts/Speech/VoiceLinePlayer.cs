@@ -58,8 +58,13 @@ namespace CAIVR.Speech
         /// <summary>True when the last line came from the network rather than a baked clip.</summary>
         public bool LastLineWasSynthesized { get; private set; }
 
+        [Tooltip("Take the voice set from the main menu rather than the field above.")]
+        [SerializeField] bool useMenuSettings = true;
+
         void Awake()
         {
+            if (useMenuSettings) resourceFolder = Menu.CaivrSettings.VoiceSet;
+
             _source = GetComponent<AudioSource>();
             if (_source == null) _source = gameObject.AddComponent<AudioSource>();
 
