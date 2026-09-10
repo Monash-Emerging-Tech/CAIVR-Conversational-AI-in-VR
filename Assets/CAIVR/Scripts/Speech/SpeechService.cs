@@ -5,10 +5,22 @@ namespace CAIVR.Speech
 {
     public enum SpeechBackend
     {
-        /// <summary>Use the mic if the platform supports it, otherwise fall back to typing.</summary>
-        Auto,
-        WindowsDictation,
+        /// <summary>
+        /// Typed input. The default because it is the only backend that works
+        /// on every platform with no OS settings, no permissions and no
+        /// install - press Play and it works.
+        /// </summary>
         Keyboard,
+
+        /// <summary>
+        /// Windows dictation. Opt-in only: it needs "Online speech recognition"
+        /// switched on in Windows privacy settings, it sends audio to Microsoft,
+        /// and it does not exist on Android, so it cannot run on Quest.
+        /// </summary>
+        WindowsDictation,
+
+        /// <summary>Use the mic if it is genuinely usable, otherwise typing.</summary>
+        Auto,
     }
 
     /// <summary>
@@ -20,8 +32,8 @@ namespace CAIVR.Speech
     /// </summary>
     public sealed class SpeechService : MonoBehaviour
     {
-        [Tooltip("Auto picks the microphone backend when the platform supports it, else typing.")]
-        [SerializeField] SpeechBackend backend = SpeechBackend.Auto;
+        [Tooltip("Keyboard works everywhere with zero setup. Mic backends are opt-in.")]
+        [SerializeField] SpeechBackend backend = SpeechBackend.Keyboard;
 
         [Tooltip("Ignore transcriptions the backend is not confident about.")]
         [Range(0f, 1f)]
@@ -120,6 +132,49 @@ namespace CAIVR.Speech
         }
 
         void OnStopped(string reason) => Stopped?.Invoke(reason);
-        void OnError(string message) => Error?.Invoke(message);
+
+        void OnError(string message)
+        {
+            // A mic backend that cannot start is not a recoverable error - it is
+            // a dead input channel, and every following turn would fail the same
+            // way. Drop to typing so the conversation stays usable instead of
+            // showing the student an error they cannot act on.
+            if (!(_recognizer is KeyboardRecognizer))
+            {
+                Debug.LogWarning($"[CAIVR] Speech backend failed, switching to typed input. {message}");
+                _pendingFallback = true;
+                return;
+            }
+
+            Error?.Invoke(message);
+        }
+
+        bool _pendingFallback;
+
+        void Update()
+        {
+            if (!_pendingFallback) return;
+            _pendingFallback = false;
+
+            // Deferred to a frame boundary: tearing the recogniser down inside
+            // its own error callback risks disposing it mid-dispatch.
+            var wasListening = IsListening;
+
+            Teardown();
+
+            _recognizer = new KeyboardRecognizer();
+            _recognizer.PartialResult += OnPartial;
+            _recognizer.FinalResult += OnFinal;
+            _recognizer.Stopped += OnStopped;
+            _recognizer.Error += OnError;
+            _recognizer.Initialize();
+
+            BackendChanged?.Invoke(_recognizer.BackendName);
+
+            if (wasListening) _recognizer.StartListening();
+        }
+
+        /// <summary>Raised when the backend swaps at runtime, so the HUD can relabel.</summary>
+        public event Action<string> BackendChanged;
     }
 }

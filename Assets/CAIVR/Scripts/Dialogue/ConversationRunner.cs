@@ -69,6 +69,7 @@ namespace CAIVR.Dialogue
 
         [Header("Wiring")]
         [SerializeField] SpeechService speech;
+        [SerializeField] VoiceLinePlayer voice;
 
         ConversationAsset _conversation;
         DialogueNode _currentNode;
@@ -105,6 +106,7 @@ namespace CAIVR.Dialogue
         void Awake()
         {
             if (speech == null) speech = FindFirstObjectByType<SpeechService>();
+            if (voice == null) voice = FindFirstObjectByType<VoiceLinePlayer>();
             _selector = BuildSelector();
         }
 
@@ -211,9 +213,8 @@ namespace CAIVR.Dialogue
         IEnumerator SpeakThenListen(DialogueNode node)
         {
             SetState(ConversationState.Speaking);
-            ProfessorLine?.Invoke(node.speakerLine);
 
-            yield return new WaitForSeconds(DurationFor(node.speakerLine));
+            yield return new WaitForSeconds(Speak(node.id, node.speakerLine));
 
             if (node.isEnd)
             {
@@ -225,9 +226,24 @@ namespace CAIVR.Dialogue
         }
 
         /// <summary>
-        /// Scale the pause with line length so long lines are not cut off and
-        /// short ones do not leave dead air. Replaced by real audio length once
-        /// we have voice lines.
+        /// Delivers one line: raises the subtitle event, plays the baked audio,
+        /// and reports how long to wait before the student's turn.
+        /// </summary>
+        float Speak(string clipKey, string line)
+        {
+            ProfessorLine?.Invoke(line);
+
+            if (voice != null && voice.TryPlay(clipKey, out var clipLength))
+                return clipLength;
+
+            // No audio baked for this line - hold the subtitle for a readable
+            // beat rather than skipping straight past it.
+            return DurationFor(line);
+        }
+
+        /// <summary>
+        /// Fallback pacing when a line has no audio. Scales with length so long
+        /// lines are not cut off and short ones do not leave dead air.
         /// </summary>
         float DurationFor(string line)
         {
@@ -253,6 +269,7 @@ namespace CAIVR.Dialogue
             if (State != ConversationState.Listening && State != ConversationState.Speaking) return;
 
             speech?.StopListening();
+            voice?.Stop();
             StopAllCoroutines();
             StartCoroutine(SpeakThenListen(_currentNode));
         }
@@ -314,12 +331,17 @@ namespace CAIVR.Dialogue
         {
             SetState(ConversationState.Speaking);
 
-            var line = string.IsNullOrWhiteSpace(node.reprompt)
-                ? "Sorry, I didn't catch that. Could you say it again?"
-                : node.reprompt;
+            var hasOwnLine = !string.IsNullOrWhiteSpace(node.reprompt);
 
-            ProfessorLine?.Invoke(line);
-            yield return new WaitForSeconds(DurationFor(line));
+            var line = hasOwnLine
+                ? node.reprompt
+                : "Sorry, I didn't catch that. Could you say it again?";
+
+            var clipKey = hasOwnLine
+                ? $"{node.id}_reprompt"
+                : VoiceLinePlayer.FallbackRepromptKey;
+
+            yield return new WaitForSeconds(Speak(clipKey, line));
 
             Listen();
         }

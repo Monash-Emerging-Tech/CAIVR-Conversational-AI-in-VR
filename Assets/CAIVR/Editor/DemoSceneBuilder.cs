@@ -36,14 +36,21 @@ namespace CAIVR.EditorTools
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.06f, 0.07f, 0.09f);
 
-            var rig = new GameObject("Conversation Demo");
+            var rig = new GameObject("Conversation Demo", typeof(AudioSource));
             var speech = rig.AddComponent<SpeechService>();
+            var voice = rig.AddComponent<VoiceLinePlayer>();
             var runner = rig.AddComponent<ConversationRunner>();
             rig.AddComponent<ConversationDemoHud>();
+
+            // An AudioListener is normally on the camera; without one the voice
+            // lines play into nothing and the scene is silent.
+            if (cameraObject.GetComponent<AudioListener>() == null)
+                cameraObject.AddComponent<AudioListener>();
 
             // Wire the references explicitly so the scene is correct on load
             // rather than relying on the runtime FindFirstObjectByType fallbacks.
             Wire(runner, "speech", speech);
+            Wire(runner, "voice", voice);
 
             Directory.CreateDirectory(SceneFolder);
             EditorSceneManager.SaveScene(scene, ScenePath);
