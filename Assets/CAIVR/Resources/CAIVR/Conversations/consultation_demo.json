@@ -27,7 +27,8 @@
     "Undeclared AI-generated analysis is treated as academic misconduct; declaring it and rewriting it in your own words is not.",
     "Turnitin similarity scores flag quotes and reference lists too, so a high score is not by itself evidence of plagiarism.",
     "The census date for this semester has already passed, so withdrawing now appears on the student's academic record.",
-    "Student Services accept walk-ins and can register students for adjustments that apply across all their units."
+    "Student Services accept walk-ins and can register students for adjustments that apply across all their units.",
+    "If a student without documentation later obtains a medical certificate, Dr Ellery will extend the seventy-two hours to a full week."
   ],
   "startNodeId": "greeting",
   "nodes": [
@@ -382,6 +383,26 @@
       "isEnd": false,
       "branches": [
         {
+          "label": "Asks whether documentation gets them longer",
+          "intent": "The student asks, conditionally, whether obtaining a medical certificate or other documentation would let them have a longer extension than the one offered.",
+          "keywords": [
+            "if i get",
+            "if i got",
+            "would i get",
+            "will i get",
+            "would that",
+            "with a certificate",
+            "if i bring",
+            "if i have",
+            "does that change",
+            "would it be longer",
+            "longer extension",
+            "get more time then",
+            "what if i"
+          ],
+          "nextNodeId": "extension_docs_would_help"
+        },
+        {
           "label": "Accepts",
           "intent": "The student accepts the shorter extension and agrees to contact Student Services.",
           "keywords": [
@@ -424,6 +445,26 @@
       "reprompt": "I know it's not what you wanted to hear. Are we alright?",
       "isEnd": false,
       "branches": [
+        {
+          "label": "Asks whether documentation gets them longer",
+          "intent": "The student asks, conditionally, whether obtaining a medical certificate or other documentation would let them have a longer extension than the one offered.",
+          "keywords": [
+            "if i get",
+            "if i got",
+            "would i get",
+            "will i get",
+            "would that",
+            "with a certificate",
+            "if i bring",
+            "if i have",
+            "does that change",
+            "would it be longer",
+            "longer extension",
+            "get more time then",
+            "what if i"
+          ],
+          "nextNodeId": "extension_docs_would_help"
+        },
         {
           "label": "Accepts the limit",
           "intent": "The student accepts the professor's final position, however reluctantly.",
@@ -1637,6 +1678,55 @@
             "nothing else"
           ],
           "nextNodeId": "farewell"
+        }
+      ]
+    },
+    {
+      "id": "extension_docs_would_help",
+      "speakerLine": "Yes - that's exactly what changes it. With a medical certificate I can go up to a full week instead of seventy-two hours. I'd much rather do that than have you rush it. Can you get one?",
+      "expectation": "The student says whether they can obtain documentation.",
+      "reprompt": "So - can you get a certificate?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Can get documentation",
+          "intent": "The student says they can obtain a medical certificate or letter.",
+          "keywords": [
+            "yes",
+            "yeah",
+            "i can",
+            "ill get",
+            "i will get",
+            "should be able",
+            "i think so",
+            "ive got",
+            "i have",
+            "ok",
+            "sure",
+            "ill try",
+            "tomorrow",
+            "tonight"
+          ],
+          "nextNodeId": "extension_granted"
+        },
+        {
+          "label": "Cannot get documentation",
+          "intent": "The student cannot obtain documentation, so the shorter extension stands.",
+          "keywords": [
+            "no",
+            "cant",
+            "can not",
+            "never went",
+            "didnt go",
+            "did not go",
+            "too late",
+            "dont have",
+            "do not have",
+            "nothing",
+            "not really",
+            "probably not"
+          ],
+          "nextNodeId": "extension_firm"
         }
       ]
     }

@@ -207,7 +207,7 @@ namespace CAIVR.Dialogue
             // Ground System 2 in this script's world before it has to answer
             // anything the tree does not cover.
             if (_selector is LlmBranchSelector grounded)
-                grounded.SetWorldFacts(_conversation.worldFacts);
+                grounded.SetConversation(_conversation);
 
             CurrentContext = _conversation.PickContext();
             SetState(ConversationState.ShowingContext);
@@ -395,7 +395,19 @@ namespace CAIVR.Dialogue
             if (decision.Matched)
             {
                 var branch = node.branches[decision.BranchIndex];
-                EnterNode(_conversation.GetNode(branch.nextNodeId));
+                var next = _conversation.GetNode(branch.nextNodeId);
+
+                // The branch is right but its scripted line does not answer what
+                // was actually asked. Answer first, then continue - otherwise a
+                // correct branch still reads as the professor ignoring them.
+                if (decision.HasSideReply)
+                {
+                    StopAllCoroutines();
+                    StartCoroutine(BridgeThenEnter(decision.SideReply, next));
+                    return;
+                }
+
+                EnterNode(next);
                 return;
             }
 
@@ -457,6 +469,18 @@ namespace CAIVR.Dialogue
                 : Speak(node.id, node.speakerLine);
 
             Listen();
+        }
+
+        /// <summary>
+        /// Speaks a one-line answer to what the student asked, then moves on to
+        /// the branch they earned. The bridge has no baked audio, so it is
+        /// synthesized; the line it leads into is baked and therefore instant.
+        /// </summary>
+        IEnumerator BridgeThenEnter(string reply, DialogueNode next)
+        {
+            SetState(ConversationState.Speaking);
+            yield return Speak(null, reply);
+            EnterNode(next);
         }
 
         IEnumerator Reprompt(DialogueNode node)

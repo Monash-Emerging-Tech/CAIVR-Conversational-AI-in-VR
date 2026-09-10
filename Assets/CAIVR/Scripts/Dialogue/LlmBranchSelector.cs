@@ -50,8 +50,20 @@ namespace CAIVR.Dialogue
         /// </summary>
         string[] _worldFacts = System.Array.Empty<string>();
 
+        /// <summary>
+        /// The loaded script, so the prompt can show what the professor will say
+        /// down each branch rather than only what each branch means.
+        /// </summary>
+        ConversationAsset _conversation;
+
         public void SetWorldFacts(string[] facts)
             => _worldFacts = facts ?? System.Array.Empty<string>();
+
+        public void SetConversation(ConversationAsset conversation)
+        {
+            _conversation = conversation;
+            SetWorldFacts(conversation?.worldFacts);
+        }
 
         public string Name => string.IsNullOrEmpty(_apiKey)
             ? "System 2 (local LLM)"
@@ -216,12 +228,24 @@ namespace CAIVR.Dialogue
             "Use -1 when the reply is off-topic, unintelligible, or matches no " +
             "option. Do not invent a branch to be helpful.\n" +
             "\n" +
-            "When branch is -1 because the student asked a reasonable question " +
-            "that no branch covers, write \"reply\": the professor's answer to " +
-            "it, in character. One or two short sentences, spoken aloud, plain " +
+            "Each branch also shows what the professor says next if you pick it.\n" +
+            "\n" +
+            "Use \"reply\" in EITHER of these cases:\n" +
+            "\n" +
+            "(a) branch is -1 because the student asked a reasonable question no " +
+            "branch covers. Answer it in character; the simulation will then " +
+            "return to its own question.\n" +
+            "\n" +
+            "(b) you DID match a branch, but the line that branch leads to does " +
+            "not actually address what the student just asked - most often a " +
+            "direct question that the scripted line talks around. Write the one " +
+            "sentence that answers them; it is spoken immediately before that " +
+            "line. Leave \"reply\" empty whenever the scripted line already " +
+            "answers them, which is the common case - do not pad every turn.\n" +
+            "\n" +
+            "In both cases: one or two short sentences, spoken aloud, plain " +
             "prose with no markdown. Do not ask the student a new question and " +
-            "do not repeat what you just said; the simulation will return to its " +
-            "own question afterwards.\n" +
+            "do not repeat what the scripted line is about to say.\n" +
             "\n" +
             "NEVER invent specifics that are not established in the conversation " +
             "above - unit names or codes, dates, marks, staff names, or policies. " +
@@ -232,7 +256,7 @@ namespace CAIVR.Dialogue
             "Leave \"reply\" empty when the student said nothing worth answering, " +
             "was unintelligible, or when you matched a branch.";
 
-        static string BuildUserPrompt(DialogueNode node, string utterance)
+        string BuildUserPrompt(DialogueNode node, string utterance)
         {
             var builder = new StringBuilder();
 
@@ -248,6 +272,14 @@ namespace CAIVR.Dialogue
                 var branch = node.branches[i];
                 var intent = string.IsNullOrWhiteSpace(branch.intent) ? branch.label : branch.intent;
                 builder.AppendLine($"  {i}: {intent}");
+
+                // Showing what the professor will actually say next is what lets
+                // the model notice that a scripted line does not address the
+                // question asked. Without it, a branch can be chosen correctly
+                // and still produce a reply that reads as ignoring the student.
+                var next = _conversation?.GetNode(branch.nextNodeId);
+                if (next != null && !string.IsNullOrWhiteSpace(next.speakerLine))
+                    builder.AppendLine($"     then says: \"{next.speakerLine}\"");
             }
 
             builder.AppendLine();
@@ -279,7 +311,7 @@ namespace CAIVR.Dialogue
                     string.IsNullOrWhiteSpace(reply.why) ? "Model matched no branch." : reply.why,
                     reply.reply);
 
-            return new BranchDecision(reply.branch, reply.confidence, reply.why);
+            return new BranchDecision(reply.branch, reply.confidence, reply.why, reply.reply);
         }
 
         /// <summary>Smaller models still wrap JSON in code fences despite instructions.</summary>
