@@ -55,35 +55,44 @@ Still open in the notes, so nothing here depends on the answer. Both implement
 `IBranchSelector` and swap via the **Selector Mode** dropdown on
 `ConversationRunner`.
 
-| | System 1 — `KeywordBranchSelector` | System 2 — `LocalLlmBranchSelector` |
+| | System 1 — `KeywordBranchSelector` | System 2 — `LlmBranchSelector` |
 |---|---|---|
-| How | Keyword matching | A local LLM picks the branch |
-| Cost | Free | Free |
-| Speed | Instant | ~1s on a normal laptop |
-| Offline | Yes | Yes — model runs on your machine |
+| How | Keyword matching | A model reads intent and picks the branch |
+| Cost | Free | Free (local model, or a free cloud tier) |
+| Speed | Instant | ~1s local, ~0.5s on Groq |
+| Runs on Quest / WebGL | Yes | Only via a cloud endpoint |
 | Handles unexpected phrasing | Poorly | Well |
 | Deterministic | Yes | Mostly (temperature 0) |
-| Setup | None | Install Ollama, pull a model |
+| Setup | None | An endpoint, and a key if it's a cloud one |
 
 Run the same script through both and judge them side by side — that comparison
 is the point, and it's why the seam exists.
 
-### Enabling System 2 (free, ~5 minutes, one time)
+**Why System 1 loses:** a student said *"I left it too late"* while the keyword
+read `"left it late"`. One inserted word, no match. Keyword lists only ever
+understand phrasings somebody typed in advance, so they need patching forever.
 
-1. Install **Ollama**: <https://ollama.com/download>
-2. `ollama pull llama3.2`
-3. Leave it running (it serves on `localhost:11434`)
-4. Set **Selector Mode → Ai Assisted** on `ConversationRunner`
+### Configuring System 2
 
-No key, no account, no cost, and **student speech never leaves the machine** —
-which matters given this goes in front of Monash students.
+`LlmBranchSelector` speaks the **OpenAI chat-completions format**, which nearly
+every provider implements. The same code runs against a local model and a cloud
+one — only the URL changes. That matters because **neither a standalone Quest
+nor a WebGL build can host a model**, and both are shipping targets.
 
-If Ollama isn't running, the HUD says so per-turn and the conversation
-re-prompts rather than dying.
+| Target | Endpoint | Model | Key |
+|---|---|---|---|
+| Local dev | `http://localhost:11434/v1/chat/completions` | `qwen2.5:7b` | none |
+| Quest / WebGL | `https://api.groq.com/openai/v1/chat/completions` | `llama-3.3-70b-versatile` | free tier, no card |
 
-**Quest note:** a standalone headset can't host Ollama. Either point
-`ollamaEndpoint` at a PC on the same network, or move to an on-device model via
-Unity's Inference Engine. Both sit behind `IBranchSelector`.
+For local: install [Ollama](https://ollama.com/download), `ollama pull qwen2.5:7b`,
+leave it running. Nothing leaves the machine.
+
+If the endpoint is unreachable, the runner says so once, **drops to System 1,
+and redoes that turn** rather than silently taking a wrong branch.
+
+**Never commit a key.** A key inside a build can be extracted from it — before
+students see this, the request must go through a small server of ours that holds
+the key instead.
 
 ---
 
@@ -147,7 +156,7 @@ Scripts/Dialogue/
   ConversationData.cs           JSON model + validation
   IBranchSelector.cs            the System 1 / System 2 swap point
   KeywordBranchSelector.cs      System 1
-  LocalLlmBranchSelector.cs     System 2, free + local
+  LlmBranchSelector.cs          System 2, local OR cloud (OpenAI-compatible)
   ConversationRunner.cs         the state machine
 
 Scripts/Demo/

@@ -8,53 +8,63 @@ namespace CAIVR.Dialogue
 {
     /// <summary>
     /// System 2: the dialogue tree still owns the structure, but a language
-    /// model decides which branch the student's answer actually corresponds to.
+    /// model decides which branch the student's answer corresponds to.
     ///
-    /// Runs against a local Ollama server, so it is free and stays free:
-    /// no API key, no account, no per-request cost, no usage cap, and no student
-    /// speech ever leaves the machine. That last part is worth keeping in mind
-    /// given this is going in front of Monash students.
+    /// Speaks the OpenAI chat-completions format, which almost every provider
+    /// implements. That is the whole point of this class: the same code runs
+    /// against a model on the developer's machine and against a cloud endpoint
+    /// on a headset, and only a URL changes between them.
     ///
-    /// Setup (about five minutes, one time):
-    ///   1. Install Ollama from https://ollama.com/download
-    ///   2. In a terminal:  ollama pull llama3.2
-    ///   3. Leave it running. It serves on http://localhost:11434 by default.
+    /// This matters because CAIVR ships to two places that cannot host a model:
+    /// a standalone Quest, and Mike's web platform as a WebGL build. Tying the
+    /// dialogue system to a locally installed runtime would have meant System 2
+    /// working on our desks and nowhere else.
     ///
-    /// The tree is unchanged - same nodes, same branches, same authored lines.
-    /// All that moves is the matching step, which is why this drops in behind
-    /// <see cref="IBranchSelector"/> without the runner noticing.
+    ///   Local dev (free, offline, private):
+    ///     endpoint  http://localhost:11434/v1/chat/completions   (Ollama)
+    ///     model     qwen2.5:7b  /  llama3.2
+    ///     key       none
     ///
-    /// Deployment note: a Quest standalone build cannot host Ollama. Options
-    /// when we get there are pointing at a PC on the same network, or moving to
-    /// an on-device model via Unity's Inference Engine. Both sit behind this
-    /// same interface, so neither is a rewrite.
+    ///   Quest and WebGL (free tier, no credit card):
+    ///     endpoint  https://api.groq.com/openai/v1/chat/completions
+    ///     model     llama-3.3-70b-versatile
+    ///     key       required
+    ///
+    /// SECURITY: a key embedded in a build can be extracted from it. Fine for a
+    /// desk demo; before this reaches students the request must go through a
+    /// small server of ours that holds the key instead.
     /// </summary>
-    public sealed class LocalLlmBranchSelector : IBranchSelector
+    public sealed class LlmBranchSelector : IBranchSelector
     {
-        public string Name => "System 2 (local LLM)";
-
         readonly MonoBehaviour _host;
         readonly string _endpoint;
+        readonly string _apiKey;
         readonly string _model;
         readonly int _timeoutSeconds;
 
-        /// <param name="host">Any live MonoBehaviour; used to run the web request coroutine.</param>
-        /// <param name="endpoint">Ollama chat endpoint.</param>
-        /// <param name="model">
-        /// A pulled Ollama model. llama3.2 (3B) is the sensible default: small
-        /// enough to answer in about a second on a normal laptop, which matters
-        /// because this latency lands in the middle of a conversation. Larger
-        /// models classify better but the pause starts to feel wrong.
-        /// </param>
-        public LocalLlmBranchSelector(
+        public string Name => string.IsNullOrEmpty(_apiKey)
+            ? "System 2 (local LLM)"
+            : "System 2 (cloud LLM)";
+
+        /// <summary>
+        /// True when the last attempt could not reach the server at all, as
+        /// opposed to reaching it and getting an unusable answer. The runner
+        /// treats these very differently: a bad answer costs one turn, an
+        /// unreachable server means every remaining turn fails the same way.
+        /// </summary>
+        public bool LastCallFailedToConnect { get; private set; }
+
+        public LlmBranchSelector(
             MonoBehaviour host,
-            string endpoint = "http://localhost:11434/api/chat",
-            string model = "llama3.2",
+            string endpoint,
+            string model,
+            string apiKey = null,
             int timeoutSeconds = 20)
         {
             _host = host;
             _endpoint = endpoint;
             _model = model;
+            _apiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey.Trim();
             _timeoutSeconds = timeoutSeconds;
         }
 
@@ -71,19 +81,18 @@ namespace CAIVR.Dialogue
 
         IEnumerator Request(DialogueNode node, string utterance, Action<BranchDecision> onDecided)
         {
+            LastCallFailedToConnect = false;
+
             var payload = JsonUtility.ToJson(new ChatRequest
             {
                 model = _model,
-                stream = false,
-                // Ollama constrains the output to valid JSON. Without this, small
-                // models like to prefix their answer with "Sure! Here's the JSON:".
-                format = "json",
+                temperature = 0f,   // the same sentence must not wander branches
                 messages = new[]
                 {
                     new Message { role = "system", content = BuildSystemPrompt() },
                     new Message { role = "user", content = BuildUserPrompt(node, utterance) },
                 },
-                options = new Options { temperature = 0f },
+                response_format = new ResponseFormat { type = "json_object" },
             });
 
             using var request = new UnityWebRequest(_endpoint, UnityWebRequest.kHttpVerbPOST);
@@ -91,20 +100,27 @@ namespace CAIVR.Dialogue
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
 
-            // A stalled request must not strand the conversation. If we blow the
-            // budget the runner re-prompts, which is a far better failure than
-            // the professor going silent while the student waits.
+            if (_apiKey != null)
+                request.SetRequestHeader("Authorization", $"Bearer {_apiKey}");
+
+            // A stalled request must not strand the conversation. Blowing the
+            // budget re-prompts, which beats the professor going silent while
+            // the student sits there waiting.
             request.timeout = _timeoutSeconds;
 
             yield return request.SendWebRequest();
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                var hint = request.result == UnityWebRequest.Result.ConnectionError
-                    ? "Is Ollama running? Try 'ollama serve' in a terminal."
-                    : request.error;
+                LastCallFailedToConnect =
+                    request.result == UnityWebRequest.Result.ConnectionError ||
+                    request.responseCode == 0;
 
-                onDecided(BranchDecision.NoMatch($"Local model unreachable ({request.responseCode}): {hint}"));
+                var hint = LastCallFailedToConnect
+                    ? "nothing answering at that address"
+                    : $"{request.error} {Truncate(request.downloadHandler?.text)}";
+
+                onDecided(BranchDecision.NoMatch($"LLM unreachable ({request.responseCode}): {hint}"));
                 yield break;
             }
 
@@ -119,6 +135,12 @@ namespace CAIVR.Dialogue
             }
 
             onDecided(decision);
+        }
+
+        static string Truncate(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            return text.Length <= 200 ? text : text.Substring(0, 200);
         }
 
         static string BuildSystemPrompt() =>
@@ -164,20 +186,42 @@ namespace CAIVR.Dialogue
         {
             var response = JsonUtility.FromJson<ChatResponse>(json);
 
-            var content = response?.message?.content;
-            if (string.IsNullOrWhiteSpace(content))
-                return BranchDecision.NoMatch("Empty response from local model.");
+            var content = response?.choices != null && response.choices.Length > 0
+                ? response.choices[0].message?.content
+                : null;
 
-            var reply = JsonUtility.FromJson<BranchReply>(content.Trim());
+            if (string.IsNullOrWhiteSpace(content))
+                return BranchDecision.NoMatch("Model returned an empty answer.");
+
+            var reply = JsonUtility.FromJson<BranchReply>(StripFences(content));
 
             if (reply == null)
-                return BranchDecision.NoMatch($"Unparseable decision: {content}");
+                return BranchDecision.NoMatch($"Unparseable decision: {Truncate(content)}");
 
             if (reply.branch < 0 || reply.branch >= branchCount)
                 return BranchDecision.NoMatch(
                     string.IsNullOrWhiteSpace(reply.why) ? "Model matched no branch." : reply.why);
 
             return new BranchDecision(reply.branch, reply.confidence, reply.why);
+        }
+
+        /// <summary>Smaller models still wrap JSON in code fences despite instructions.</summary>
+        static string StripFences(string text)
+        {
+            var trimmed = text.Trim();
+            if (!trimmed.StartsWith("`")) return trimmed;
+
+            var firstNewline = trimmed.IndexOf('\n');
+            if (firstNewline < 0) return trimmed;
+
+            trimmed = trimmed.Substring(firstNewline + 1);
+
+            var closing = trimmed.LastIndexOf("`", StringComparison.Ordinal);
+            if (closing < 0) return trimmed.Trim();
+
+            while (closing > 0 && trimmed[closing - 1] == '`') closing--;
+
+            return trimmed.Substring(0, closing).Trim();
         }
 
         // --- Wire shapes. JsonUtility needs plain serializable fields. ---
@@ -187,9 +231,8 @@ namespace CAIVR.Dialogue
         {
             public string model;
             public Message[] messages;
-            public bool stream;
-            public string format;
-            public Options options;
+            public float temperature;
+            public ResponseFormat response_format;
         }
 
         [Serializable]
@@ -200,18 +243,21 @@ namespace CAIVR.Dialogue
         }
 
         [Serializable]
-        class Options
+        class ResponseFormat
         {
-            // Branch classification should be repeatable: the same sentence must
-            // not wander down a different branch on a second run.
-            public float temperature;
+            public string type;
         }
 
         [Serializable]
         class ChatResponse
         {
+            public Choice[] choices;
+        }
+
+        [Serializable]
+        class Choice
+        {
             public Message message;
-            public bool done;
         }
 
         [Serializable]

@@ -51,11 +51,17 @@ namespace CAIVR.Dialogue
         [Header("Branch selection")]
         [SerializeField] SelectorMode selectorMode = SelectorMode.Keywords;
 
-        [Tooltip("Local Ollama server. Free, no API key, and speech never leaves the machine.")]
-        [SerializeField] string ollamaEndpoint = "http://localhost:11434/api/chat";
+        [Tooltip("Any OpenAI-compatible chat endpoint.\n" +
+                 "Local dev:  http://localhost:11434/v1/chat/completions  (Ollama)\n" +
+                 "Quest/WebGL: https://api.groq.com/openai/v1/chat/completions")]
+        [SerializeField] string llmEndpoint = "http://localhost:11434/v1/chat/completions";
 
-        [Tooltip("A model you have pulled, e.g. 'ollama pull llama3.2'.")]
-        [SerializeField] string ollamaModel = "llama3.2";
+        [Tooltip("Local: qwen2.5:7b or llama3.2.  Groq: llama-3.3-70b-versatile.")]
+        [SerializeField] string llmModel = "qwen2.5:7b";
+
+        [Tooltip("Leave blank for a local model. Required for a cloud endpoint. " +
+                 "Never commit a key - a build can be unpacked.")]
+        [SerializeField] string llmApiKey = "";
 
         [Header("Pacing")]
         [Tooltip("Seconds the context screen shows before the start button appears (Workerbee #2 asked for 5).")]
@@ -142,10 +148,10 @@ namespace CAIVR.Dialogue
         {
             if (selectorMode == SelectorMode.Keywords) return new KeywordBranchSelector();
 
-            // No availability check here on purpose: Ollama being down is a
+            // No availability check here on purpose: an endpoint being down is a
             // runtime condition, not a startup one, and the selector reports it
-            // per-request so the HUD can show why a turn failed to match.
-            return new LocalLlmBranchSelector(this, ollamaEndpoint, ollamaModel);
+            // per-request so the runner can downgrade with a visible message.
+            return new LlmBranchSelector(this, llmEndpoint, llmModel, llmApiKey);
         }
 
         /// <summary>Load the script and show the background context. Does not start talking yet.</summary>
@@ -318,6 +324,31 @@ namespace CAIVR.Dialogue
                 if (_currentNode != deciding) return;
                 if (State != ConversationState.Deciding) return;
 
+                // System 2 with nothing behind it would fail identically on every
+                // remaining turn, and the student would just see the conversation
+                // lurching forward for no visible reason. Say so once, drop to
+                // System 1, and redo this turn rather than burning it.
+                if (!decision.Matched
+                    && _selector is LlmBranchSelector llm
+                    && llm.LastCallFailedToConnect)
+                {
+                    _selector = new KeywordBranchSelector();
+
+                    Notice?.Invoke(
+                        "Local model unreachable - falling back to System 1 (keywords). " +
+                        "Point System 2 at a reachable endpoint to use it.");
+
+                    Debug.LogWarning($"[CAIVR] {decision.Rationale} Downgraded to System 1.");
+
+                    _selector.Select(deciding, result.Text, retry =>
+                    {
+                        if (_currentNode != deciding) return;
+                        if (State != ConversationState.Deciding) return;
+                        Apply(retry, deciding);
+                    });
+                    return;
+                }
+
                 Apply(decision, deciding);
             });
         }
@@ -338,8 +369,15 @@ namespace CAIVR.Dialogue
             if (_repromptCount > maxRepromptsPerNode && node.branches.Length > 0)
             {
                 // Better to move the scene along than to trap the student in a
-                // loop the recogniser cannot get them out of.
-                Notice?.Invoke("Could not match that - moving on.");
+                // loop the recogniser cannot get them out of - but say plainly
+                // that this is the system failing, not the student.
+                Notice?.Invoke(
+                    $"Couldn't match that after {maxRepromptsPerNode} tries - " +
+                    "taking the first branch so the conversation continues.");
+
+                Debug.LogWarning(
+                    $"[CAIVR] Unmatched at node '{node.id}'. Consider adding keywords " +
+                    "for this phrasing, or switch to System 2.");
                 EnterNode(_conversation.GetNode(node.branches[0].nextNodeId));
                 return;
             }

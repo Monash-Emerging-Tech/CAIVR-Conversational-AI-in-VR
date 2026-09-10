@@ -48,7 +48,7 @@ namespace CAIVR.Dialogue
                 foreach (var keyword in branch.keywords)
                 {
                     if (string.IsNullOrWhiteSpace(keyword)) continue;
-                    if (spoken.Contains(Normalize(keyword))) hits.Add(keyword);
+                    if (Mentions(spoken, keyword)) hits.Add(keyword);
                 }
 
                 if (hits.Count == 0) continue;
@@ -77,6 +77,29 @@ namespace CAIVR.Dialogue
                 bestIndex,
                 bestScore,
                 $"matched on: {bestHits}"));
+        }
+
+        /// <summary>
+        /// Does the utterance mention this keyword?
+        ///
+        /// Whole-word first, then a prefix match so a keyword also catches its
+        /// inflections - "sick" finds "sickness", "medical" finds "medically",
+        /// "injur" finds both "injury" and "injured". Without this the list has
+        /// to enumerate every ending a student might use, which is exactly the
+        /// brittleness that makes System 1 lose to System 2.
+        ///
+        /// Restricted to keywords of four characters or more: prefix-matching
+        /// something like "ill" would fire on "I'll" and "illustrate".
+        /// </summary>
+        static bool Mentions(string spokenPadded, string keyword)
+        {
+            var needle = Normalize(keyword);          // " medical "
+            if (spokenPadded.Contains(needle)) return true;
+
+            var core = needle.Trim();
+            if (core.Length < 4 || core.Contains(' ')) return false;
+
+            return spokenPadded.Contains(" " + core);
         }
 
         /// <summary>

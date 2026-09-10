@@ -44,14 +44,14 @@
       "branches": [
         {
           "label": "Concrete reason",
-          "intent": "The student gives a specific, substantive reason: illness, family emergency, bereavement, work crisis, or another documented hardship.",
-          "keywords": ["sick", "unwell", "ill", "illness", "hospital", "family", "emergency", "died", "funeral", "mental health", "anxiety", "depression", "covid", "flu"],
+          "intent": "The student gives a specific, substantive reason: illness, injury, family emergency, bereavement, mental health, or another genuine hardship.",
+          "keywords": ["sick", "unwell", "ill", "illness", "medical", "doctor", "gp", "hospital", "surgery", "injury", "injured", "condition", "diagnosed", "treatment", "appointment", "certificate", "family", "emergency", "died", "death", "passed away", "funeral", "bereavement", "mental health", "anxiety", "depression", "burnout", "covid", "flu", "concussion", "accident", "carer", "caring for"],
           "nextNodeId": "extension_evidence"
         },
         {
           "label": "Vague reason",
-          "intent": "The student is evasive or gives a weak reason: busy, behind, other assignments, forgot, poor planning.",
-          "keywords": ["busy", "behind", "other assignments", "lot on", "forgot", "didnt start", "did not start", "work", "shifts", "overwhelmed", "stressed"],
+          "intent": "The student is evasive or gives a weak reason: busy, behind, other assignments, forgot, poor planning, work shifts.",
+          "keywords": ["busy", "behind", "other assignments", "other subjects", "lot on", "forgot", "didnt start", "did not start", "havent started", "have not started", "work", "shifts", "job", "overwhelmed", "stressed", "no time", "ran out of time", "procrastinated", "left it", "too late", "my fault", "should have started", "lazy", "slacked"],
           "nextNodeId": "extension_push"
         }
       ]
