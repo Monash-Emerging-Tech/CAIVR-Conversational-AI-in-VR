@@ -1,0 +1,350 @@
+{
+  "id": "consultation_demo",
+  "title": "Consultation - Monash College",
+  "contextVariants": [
+    "You are three days from the due date for your Unit 2 research report and you have barely started. You have been unwell for most of the past fortnight but never went to a doctor. You have booked a consultation with Dr Ellery to ask for an extension.",
+    "You submitted a draft of your research report last week and got a mark back that was lower than you expected. You do not understand the feedback. You have booked a consultation with Dr Ellery to ask what it means.",
+    "The assignment brief for your research report is ambiguous about how broad the topic is allowed to be. You have picked something you are worried is too big. You have booked a consultation with Dr Ellery to check before you commit."
+  ],
+  "startNodeId": "greeting",
+  "nodes": [
+    {
+      "id": "greeting",
+      "speakerLine": "Come in, take a seat. Sorry about the mess. So, what did you want to talk about today?",
+      "expectation": "The student states their reason for coming: an extension, a question about the brief, or feedback on their work.",
+      "reprompt": "Take your time. What brings you in?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Asking for an extension",
+          "intent": "The student wants more time on an assignment, or says they cannot finish by the due date.",
+          "keywords": ["extension", "more time", "due date", "deadline", "late", "cant finish", "can not finish", "wont be done", "push it back"],
+          "nextNodeId": "extension_reason"
+        },
+        {
+          "label": "Confused by the brief",
+          "intent": "The student does not understand the assignment brief, requirements, scope, or what is being asked of them.",
+          "keywords": ["brief", "assignment", "confused", "dont understand", "do not understand", "requirements", "what do you want", "unclear", "topic", "scope"],
+          "nextNodeId": "brief_which_part"
+        },
+        {
+          "label": "Wants feedback on work",
+          "intent": "The student wants the professor to look at a draft, or to explain a mark or feedback they already received.",
+          "keywords": ["feedback", "draft", "my mark", "my grade", "look at", "read my", "marked", "comments"],
+          "nextNodeId": "feedback_which"
+        }
+      ]
+    },
+    {
+      "id": "extension_reason",
+      "speakerLine": "An extension. Alright. How long were you after, and what's the reason?",
+      "expectation": "The student gives a reason for needing the extension. It may be a solid reason like illness, or a vague one.",
+      "reprompt": "How much longer do you need, and why?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Concrete reason",
+          "intent": "The student gives a specific, substantive reason: illness, family emergency, bereavement, work crisis, or another documented hardship.",
+          "keywords": ["sick", "unwell", "ill", "illness", "hospital", "family", "emergency", "died", "funeral", "mental health", "anxiety", "depression", "covid", "flu"],
+          "nextNodeId": "extension_evidence"
+        },
+        {
+          "label": "Vague reason",
+          "intent": "The student is evasive or gives a weak reason: busy, behind, other assignments, forgot, poor planning.",
+          "keywords": ["busy", "behind", "other assignments", "lot on", "forgot", "didnt start", "did not start", "work", "shifts", "overwhelmed", "stressed"],
+          "nextNodeId": "extension_push"
+        }
+      ]
+    },
+    {
+      "id": "extension_push",
+      "speakerLine": "Mm. Look, being busy is not by itself grounds for an extension, or I'd be granting them to everyone. Is there something else going on?",
+      "expectation": "The student either opens up with a real reason, or accepts the answer and backs down. This is the hard part of the conversation to practise.",
+      "reprompt": "I'm asking because if there is a real reason, there are proper channels for it. Is there?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Opens up",
+          "intent": "The student discloses a genuine underlying difficulty they had not mentioned at first.",
+          "keywords": ["actually", "honestly", "havent been", "have not been", "struggling", "sick", "unwell", "mental health", "family", "home", "hard time", "rough"],
+          "nextNodeId": "extension_evidence"
+        },
+        {
+          "label": "Backs down",
+          "intent": "The student accepts that they will not get an extension and does not push further.",
+          "keywords": ["fair enough", "no", "thats fine", "that is fine", "okay", "ok", "understand", "ill manage", "i will manage", "nevermind", "never mind", "sorry"],
+          "nextNodeId": "extension_declined"
+        }
+      ]
+    },
+    {
+      "id": "extension_evidence",
+      "speakerLine": "Right. I'm sorry to hear that. Do you have any documentation for it? A medical certificate, or something from Student Services?",
+      "expectation": "The student says whether they have supporting documentation.",
+      "reprompt": "Do you have anything in writing I can attach to the request?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Has documentation",
+          "intent": "The student has, or can obtain, a medical certificate or other supporting document.",
+          "keywords": ["yes", "i do", "i have", "certificate", "doctor", "medical", "i can get", "ill get", "i will get", "email it", "send it"],
+          "nextNodeId": "extension_granted"
+        },
+        {
+          "label": "No documentation",
+          "intent": "The student has no documentation and did not see a doctor or register with Student Services.",
+          "keywords": ["no", "i dont", "i do not", "didnt go", "did not go", "never went", "nothing", "havent got", "have not got", "cant get", "no certificate"],
+          "nextNodeId": "extension_conditional"
+        }
+      ]
+    },
+    {
+      "id": "extension_granted",
+      "speakerLine": "Good. Send that through to me by Friday and I'll put a week on your due date. Don't leave it any later than Friday, or the request goes to the faculty and out of my hands.",
+      "expectation": "Acknowledge and confirm the deadline for sending documentation.",
+      "reprompt": "Does that work for you?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student agrees, thanks the professor, or confirms they understand the Friday deadline.",
+          "keywords": ["thank", "thanks", "yes", "okay", "ok", "will do", "ill send", "i will send", "got it", "understood", "friday"],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "extension_conditional",
+      "speakerLine": "Without documentation, the most I can give you is seventy-two hours, and that's me using my discretion. I'd also like you to talk to Student Services this week. Can you do that?",
+      "expectation": "The student accepts the shorter extension and the condition attached to it, or negotiates.",
+      "reprompt": "Seventy-two hours, and a conversation with Student Services. Can you commit to that?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Accepts",
+          "intent": "The student accepts the shorter extension and agrees to contact Student Services.",
+          "keywords": ["yes", "okay", "ok", "thank", "thanks", "ill do", "i will do", "can do", "sure", "fine", "appreciate"],
+          "nextNodeId": "wrap_up"
+        },
+        {
+          "label": "Pushes for more",
+          "intent": "The student argues that seventy-two hours is not enough and asks for longer.",
+          "keywords": ["not enough", "longer", "more time", "a week", "cant do", "can not do", "too short", "please", "any chance"],
+          "nextNodeId": "extension_firm"
+        }
+      ]
+    },
+    {
+      "id": "extension_firm",
+      "speakerLine": "I understand, but seventy-two hours is genuinely the limit of what I can do without paperwork. Get the documentation and I can revisit it. That's the honest answer.",
+      "expectation": "The student accepts the boundary. Practising hearing no is the point of this branch.",
+      "reprompt": "I know it's not what you wanted to hear. Are we alright?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Accepts the limit",
+          "intent": "The student accepts the professor's final position, however reluctantly.",
+          "keywords": ["okay", "ok", "fine", "understand", "fair", "thank", "thanks", "ill try", "i will try", "alright"],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "extension_declined",
+      "speakerLine": "I appreciate you being straight with me. My advice: submit what you have by the due date. A late-but-complete piece scores worse than an on-time partial one under our rubric.",
+      "expectation": "The student acknowledges the advice.",
+      "reprompt": "Does that make sense?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student takes the advice on board.",
+          "keywords": ["okay", "ok", "thank", "thanks", "makes sense", "understand", "will do", "good idea", "right"],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "brief_which_part",
+      "speakerLine": "Sure. The brief is a bit dense, I'll admit. Which part is giving you trouble?",
+      "expectation": "The student identifies a specific part of the brief they are stuck on.",
+      "reprompt": "Whereabouts in it are you stuck?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Scope of topic",
+          "intent": "The student is unsure whether their chosen topic is too broad or too narrow.",
+          "keywords": ["topic", "too broad", "too big", "too narrow", "scope", "focus", "narrow it", "how specific", "research question"],
+          "nextNodeId": "brief_scope_answer"
+        },
+        {
+          "label": "Format or length",
+          "intent": "The student is asking about word count, structure, referencing style, or formatting.",
+          "keywords": ["word count", "how long", "how many words", "format", "structure", "referencing", "citation", "harvard", "apa", "layout"],
+          "nextNodeId": "brief_format_answer"
+        }
+      ]
+    },
+    {
+      "id": "brief_scope_answer",
+      "speakerLine": "Good instinct to ask. Rule of thumb: if you can't state your research question in one sentence without using the word 'and', it's too broad. Narrow it until you can. What's your topic?",
+      "expectation": "The student states their topic so the professor can react to it.",
+      "reprompt": "What were you planning to write about?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "States a topic",
+          "intent": "The student names or describes a topic, however roughly.",
+          "keywords": ["about", "looking at", "im doing", "i am doing", "my topic", "i wanted", "social media", "climate", "education", "health", "technology", "policy"],
+          "nextNodeId": "brief_scope_followup"
+        }
+      ]
+    },
+    {
+      "id": "brief_scope_followup",
+      "speakerLine": "That could work, but I'd cut it in half again. Pick one population, one time period, one outcome. Send me a one-line question by Wednesday and I'll tell you if it's tight enough.",
+      "expectation": "The student agrees to send a refined question.",
+      "reprompt": "Can you get me one line by Wednesday?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Agrees",
+          "intent": "The student agrees to narrow the topic and send it through.",
+          "keywords": ["yes", "okay", "ok", "will do", "ill send", "i will send", "thank", "thanks", "wednesday", "sure", "got it"],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "brief_format_answer",
+      "speakerLine": "Two thousand words, plus or minus ten percent, excluding references. Harvard style. And the appendix doesn't count toward the total, before you ask.",
+      "expectation": "The student acknowledges or asks a follow-up.",
+      "reprompt": "Was there anything else on the formatting?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student understands and has no further formatting questions.",
+          "keywords": ["thank", "thanks", "okay", "ok", "got it", "understood", "great", "perfect", "makes sense", "no"],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "feedback_which",
+      "speakerLine": "Of course. Is this about the mark you already got back, or do you want me to look at something new?",
+      "expectation": "The student clarifies which of the two they mean.",
+      "reprompt": "Existing feedback, or something new?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Existing mark",
+          "intent": "The student wants the professor to explain a mark or written feedback they already received.",
+          "keywords": ["mark", "grade", "already", "got back", "feedback", "comments", "you wrote", "result", "score", "last one"],
+          "nextNodeId": "feedback_explain"
+        },
+        {
+          "label": "New draft",
+          "intent": "The student wants the professor to read something they have written but not submitted.",
+          "keywords": ["new", "draft", "written", "working on", "before i submit", "have a look", "read it", "started"],
+          "nextNodeId": "feedback_draft"
+        }
+      ]
+    },
+    {
+      "id": "feedback_explain",
+      "speakerLine": "Let's have a look. My note said your argument was descriptive rather than analytical. Do you know what I meant by that?",
+      "expectation": "The student either admits they do not understand, or attempts an explanation. Admitting confusion is the harder social move and the one worth practising.",
+      "reprompt": "Be honest with me, did that comment make sense to you?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Admits not knowing",
+          "intent": "The student admits they do not understand the feedback.",
+          "keywords": ["no", "not really", "dont know", "do not know", "not sure", "confused", "thats why", "that is why", "no idea", "honestly no"],
+          "nextNodeId": "feedback_teach"
+        },
+        {
+          "label": "Attempts an answer",
+          "intent": "The student offers their own interpretation of the feedback.",
+          "keywords": ["i think", "does it mean", "is it", "because", "i guess", "maybe", "summarising", "describing", "not arguing"],
+          "nextNodeId": "feedback_teach"
+        }
+      ]
+    },
+    {
+      "id": "feedback_teach",
+      "speakerLine": "Descriptive tells me what happened. Analytical tells me why it matters and what follows from it. Every paragraph should end with a 'so what'. Try adding that one sentence to each and send it back to me.",
+      "expectation": "The student acknowledges the advice.",
+      "reprompt": "Give that a go and see how it reads. Sound alright?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student understands and agrees to revise.",
+          "keywords": ["thank", "thanks", "okay", "ok", "got it", "makes sense", "will do", "ill try", "i will try", "that helps"],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "feedback_draft",
+      "speakerLine": "Happy to. I don't read full drafts during consultation, but if you email it tonight I'll put comments on the first two pages before Thursday. Does that help?",
+      "expectation": "The student accepts the offer.",
+      "reprompt": "Would that be useful to you?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Accepts",
+          "intent": "The student accepts the offer to email the draft.",
+          "keywords": ["yes", "thank", "thanks", "great", "perfect", "ill send", "i will send", "tonight", "okay", "ok", "that helps"],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "wrap_up",
+      "speakerLine": "Right. Was there anything else while you're here?",
+      "expectation": "The student closes the conversation politely, or raises one more thing.",
+      "reprompt": "Anything else, or are we done?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Nothing else",
+          "intent": "The student says they have nothing further and thanks the professor.",
+          "keywords": ["no", "thats it", "that is it", "im good", "i am good", "thank", "thanks", "all good", "nothing", "thats all", "that is all"],
+          "nextNodeId": "farewell"
+        },
+        {
+          "label": "One more thing",
+          "intent": "The student raises an additional question or topic.",
+          "keywords": ["actually", "one more", "also", "another", "while im here", "while i am here", "can i ask", "quick question", "yes"],
+          "nextNodeId": "wrap_up_more"
+        }
+      ]
+    },
+    {
+      "id": "wrap_up_more",
+      "speakerLine": "Go on then, quickly. I've got another student at half past.",
+      "expectation": "The student asks their additional question concisely.",
+      "reprompt": "What was it?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Asks it",
+          "intent": "The student asks any further question.",
+          "keywords": ["i wanted", "can i", "is it", "do you", "what about", "when", "how", "would", "should", "just"],
+          "nextNodeId": "farewell"
+        }
+      ]
+    },
+    {
+      "id": "farewell",
+      "speakerLine": "Alright. Good on you for coming in and asking rather than guessing. That's the whole point of these. I'll see you in the tutorial on Thursday.",
+      "expectation": "End of conversation.",
+      "reprompt": "",
+      "isEnd": true,
+      "branches": []
+    }
+  ]
+}
