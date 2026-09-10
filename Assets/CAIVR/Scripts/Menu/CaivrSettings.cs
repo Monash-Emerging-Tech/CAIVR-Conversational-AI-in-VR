@@ -76,6 +76,29 @@ namespace CAIVR.Menu
         }
 
         /// <summary>
+        /// The key to use, preferring an environment variable so a developer's
+        /// key stays in their shell rather than being written into the project.
+        /// Returns null when there is none, which is the normal case for a local
+        /// model.
+        /// </summary>
+        public static string ResolveLlmApiKey()
+        {
+            var stored = LlmApiKey;
+            if (!string.IsNullOrWhiteSpace(stored)) return stored.Trim();
+
+            foreach (var name in new[] { "CAIVR_LLM_API_KEY", "GROQ_API_KEY" })
+            {
+                string value = null;
+                try { value = System.Environment.GetEnvironmentVariable(name); }
+                catch { /* not available on every platform */ }
+
+                if (!string.IsNullOrWhiteSpace(value)) return value.Trim();
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// The provider's model-list URL, derived from the chat endpoint. Used to
         /// check availability before the student commits to a conversation.
         /// </summary>

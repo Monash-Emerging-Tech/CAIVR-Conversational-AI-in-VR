@@ -156,7 +156,26 @@ namespace CAIVR.Dialogue
             // No availability check here on purpose: an endpoint being down is a
             // runtime condition, not a startup one, and the selector reports it
             // per-request so the runner can downgrade with a visible message.
-            return new LlmBranchSelector(this, llmEndpoint, llmModel, llmApiKey);
+            return new LlmBranchSelector(this, llmEndpoint, llmModel, ResolveApiKey());
+        }
+
+        /// <summary>
+        /// Where the API key comes from, in order of preference.
+        ///
+        /// Environment variable first, so a developer's key lives in their shell
+        /// and never gets written into the project, a PlayerPrefs entry, or a
+        /// commit. Falls back to the settings value for cases where an env var
+        /// is not available.
+        ///
+        /// Neither route is acceptable for a shipped build: environment
+        /// variables do not exist on Quest or WebGL, and anything embedded in a
+        /// build can be extracted from it. Production has to route completions
+        /// through a server of ours that holds the key.
+        /// </summary>
+        string ResolveApiKey()
+        {
+            if (!string.IsNullOrWhiteSpace(llmApiKey)) return llmApiKey.Trim();
+            return Menu.CaivrSettings.ResolveLlmApiKey();
         }
 
         /// <summary>Load the script and show the background context. Does not start talking yet.</summary>

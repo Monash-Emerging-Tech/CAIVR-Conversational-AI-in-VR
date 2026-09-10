@@ -70,9 +70,9 @@ namespace CAIVR.Menu
             using var request = UnityEngine.Networking.UnityWebRequest.Get(url);
             request.timeout = 4;
 
-            var key = CaivrSettings.LlmApiKey;
+            var key = CaivrSettings.ResolveLlmApiKey();
             if (!string.IsNullOrWhiteSpace(key))
-                request.SetRequestHeader("Authorization", $"Bearer {key.Trim()}");
+                request.SetRequestHeader("Authorization", $"Bearer {key}");
 
             yield return request.SendWebRequest();
 
