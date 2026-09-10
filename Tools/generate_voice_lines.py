@@ -214,7 +214,46 @@ def speak_piper(text, voice):
         Path(out_path).unlink(missing_ok=True)
 
 
+def speak_edge(text, voice):
+    """
+    Azure's neural voices via Microsoft Edge's read-aloud service.
+
+    No account, no key, no cost - and it is the same en-AU-NatashaNeural you
+    would get from a paid Azure Speech resource, so it doubles as an exact
+    preview of what Azure sounds like.
+
+    Caveat worth knowing: this endpoint exists for Edge's built-in read-aloud
+    feature, so leaning on it is outside its intended use. Fine for prototyping
+    and for deciding on a voice. Before shipping to students, move to a real
+    Azure Speech resource - same voice, same output, just properly licensed.
+    """
+    import asyncio
+    import tempfile
+
+    try:
+        import edge_tts
+    except ImportError:
+        die("edge-tts not installed. Run: python -m pip install edge-tts")
+
+    voice = voice or "en-AU-NatashaNeural"
+
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+        out_path = tmp.name
+
+    async def run():
+        # Slightly slowed: a consultation is considered speech, not a bulletin.
+        communicate = edge_tts.Communicate(text, voice, rate="-5%")
+        await communicate.save(out_path)
+
+    try:
+        asyncio.run(run())
+        return Path(out_path).read_bytes(), ".mp3"
+    finally:
+        Path(out_path).unlink(missing_ok=True)
+
+
 ENGINES = {
+    "edge": speak_edge,
     "elevenlabs": speak_elevenlabs,
     "azure": speak_azure,
     "google": speak_google,
@@ -251,6 +290,14 @@ def list_voices(engine):
             f"&key={urllib.parse.quote(env('GOOGLE_TTS_API_KEY'))}", {}))
         for v in data.get("voices", []):
             print(f"  {v['name']:<32} {v.get('ssmlGender','?')}")
+
+    elif engine == "edge":
+        import subprocess
+        result = subprocess.run([sys.executable, "-m", "edge_tts", "--list-voices"],
+                                capture_output=True, text=True)
+        for line in result.stdout.splitlines():
+            if "en-AU" in line or "en-GB" in line:
+                print(f"  {line.strip()}")
 
     else:
         die(f"--list-voices is not supported for '{engine}'")
