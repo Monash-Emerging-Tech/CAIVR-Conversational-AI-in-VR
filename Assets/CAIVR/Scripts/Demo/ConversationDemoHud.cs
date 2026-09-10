@@ -238,7 +238,9 @@ namespace CAIVR.Demo
                          && runner.State == ConversationState.Listening;
 
             if (typing)
-                builder.AppendLine($"<color=#FFFFFF>&gt; {_typed}<color=#888888>_</color></color>");
+                // A literal '>' - TMP renders HTML entities verbatim rather than
+                // decoding them, so "&gt;" would show up as those four characters.
+                builder.AppendLine($"<color=#FFFFFF>> {_typed}<color=#888888>_</color></color>");
 
             if (!string.IsNullOrEmpty(_notice))
                 builder.AppendLine($"<color=#FF9F9F>{_notice}</color>");

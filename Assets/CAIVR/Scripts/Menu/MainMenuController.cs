@@ -46,6 +46,8 @@ namespace CAIVR.Menu
             public Func<string> Read;
         }
 
+        string _llmStatus = "checking…";
+
         void Awake()
         {
             _microphones = Microphone.devices ?? Array.Empty<string>();
@@ -54,6 +56,33 @@ namespace CAIVR.Menu
             BuildUi();
             RefreshRows();
             StartMicMonitor();
+
+            // Find out now whether System 2 has anything behind it. Discovering
+            // that mid-conversation is how you get a professor who appears to
+            // answer at random.
+            StartCoroutine(ProbeLlm());
+        }
+
+        System.Collections.IEnumerator ProbeLlm()
+        {
+            var url = CaivrSettings.LlmProbeUrl();
+
+            using var request = UnityEngine.Networking.UnityWebRequest.Get(url);
+            request.timeout = 4;
+
+            var key = CaivrSettings.LlmApiKey;
+            if (!string.IsNullOrWhiteSpace(key))
+                request.SetRequestHeader("Authorization", $"Bearer {key.Trim()}");
+
+            yield return request.SendWebRequest();
+
+            var reachable = request.result == UnityEngine.Networking.UnityWebRequest.Result.Success;
+
+            _llmStatus = reachable
+                ? $"{CaivrSettings.LlmModel}  ✓"
+                : "no endpoint reachable  ✗";
+
+            RefreshRows();
         }
 
         void OnDestroy() => StopMicMonitor();
@@ -303,7 +332,7 @@ namespace CAIVR.Menu
             AddRow(root, "Dialogue system", ref y,
                 () => CaivrSettings.SelectorMode == 0
                     ? "System 1 — scripted keywords"
-                    : "System 2 — local LLM (needs Ollama)",
+                    : $"System 2 — {_llmStatus}",
                 CycleSelector);
 
             AddRow(root, "Professor voice", ref y,

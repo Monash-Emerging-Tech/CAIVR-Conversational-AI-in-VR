@@ -121,7 +121,12 @@ namespace CAIVR.Dialogue
             // this scene directly from the Editor still works - it just uses
             // whatever was last chosen, which is what you want while iterating.
             if (useMenuSettings)
+            {
                 selectorMode = (SelectorMode)Menu.CaivrSettings.SelectorMode;
+                llmEndpoint = Menu.CaivrSettings.LlmEndpoint;
+                llmModel = Menu.CaivrSettings.LlmModel;
+                llmApiKey = Menu.CaivrSettings.LlmApiKey;
+            }
 
             _selector = BuildSelector();
         }
@@ -335,7 +340,7 @@ namespace CAIVR.Dialogue
                     _selector = new KeywordBranchSelector();
 
                     Notice?.Invoke(
-                        "Local model unreachable - falling back to System 1 (keywords). " +
+                        "System 2 endpoint unreachable - using System 1 (keywords) instead. " +
                         "Point System 2 at a reachable endpoint to use it.");
 
                     Debug.LogWarning($"[CAIVR] {decision.Rationale} Downgraded to System 1.");

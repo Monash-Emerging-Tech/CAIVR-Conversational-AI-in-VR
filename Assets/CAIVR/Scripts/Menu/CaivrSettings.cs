@@ -43,6 +43,52 @@ namespace CAIVR.Menu
             set { PlayerPrefs.SetInt(SubtitlesKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
+        const string EndpointKey = "caivr.llm.endpoint";
+        const string ModelKey = "caivr.llm.model";
+        const string ApiKeyKey = "caivr.llm.key";
+
+        /// <summary>
+        /// Any OpenAI-compatible chat endpoint. Defaults to a local Ollama, which
+        /// is right for a developer's machine; a Quest or WebGL build has to point
+        /// at a cloud one, since neither can host a model.
+        /// </summary>
+        public static string LlmEndpoint
+        {
+            get => PlayerPrefs.GetString(EndpointKey, "http://localhost:11434/v1/chat/completions");
+            set { PlayerPrefs.SetString(EndpointKey, value); PlayerPrefs.Save(); }
+        }
+
+        public static string LlmModel
+        {
+            get => PlayerPrefs.GetString(ModelKey, "qwen2.5:7b");
+            set { PlayerPrefs.SetString(ModelKey, value); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>
+        /// Blank for a local model. PlayerPrefs is not a secret store - this is
+        /// for development convenience only, and a shipped build must get its
+        /// completions through a server of ours that holds the key instead.
+        /// </summary>
+        public static string LlmApiKey
+        {
+            get => PlayerPrefs.GetString(ApiKeyKey, "");
+            set { PlayerPrefs.SetString(ApiKeyKey, value); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>
+        /// The provider's model-list URL, derived from the chat endpoint. Used to
+        /// check availability before the student commits to a conversation.
+        /// </summary>
+        public static string LlmProbeUrl()
+        {
+            var endpoint = LlmEndpoint ?? "";
+            const string suffix = "/chat/completions";
+
+            return endpoint.EndsWith(suffix)
+                ? endpoint.Substring(0, endpoint.Length - suffix.Length) + "/models"
+                : endpoint;
+        }
+
         /// <summary>
         /// The device name to hand to Microphone.Start. Falls back to the system
         /// default if the saved device has since been unplugged - a headset that
