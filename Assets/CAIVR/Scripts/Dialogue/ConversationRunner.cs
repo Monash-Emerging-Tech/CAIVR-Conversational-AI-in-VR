@@ -330,7 +330,7 @@ namespace CAIVR.Dialogue
             if (_currentNode == null) return;
             if (State != ConversationState.Listening && State != ConversationState.Speaking) return;
 
-            speech?.StopListening();
+            StopListeningQuietly();
             voice?.Stop();
             StopAllCoroutines();
             StartCoroutine(SpeakThenListen(_currentNode));
@@ -346,7 +346,7 @@ namespace CAIVR.Dialogue
         {
             if (State != ConversationState.Listening) return;
 
-            speech?.StopListening();
+            StopListeningQuietly();
             FinalTranscript?.Invoke(result);
 
             SetState(ConversationState.Deciding);
@@ -478,8 +478,28 @@ namespace CAIVR.Dialogue
             Listen();
         }
 
+        /// <summary>
+        /// True while we are the ones closing the microphone.
+        ///
+        /// Recognisers raise Stopped synchronously from inside StopListening, so
+        /// without this the runner hears its own stop, still sees the state as
+        /// Listening, and re-prompts the question the student just answered.
+        /// </summary>
+        bool _stoppingDeliberately;
+
+        /// <summary>Closes the mic without treating it as the student going quiet.</summary>
+        void StopListeningQuietly()
+        {
+            _stoppingDeliberately = true;
+            try { speech?.StopListening(); }
+            finally { _stoppingDeliberately = false; }
+        }
+
         void OnListeningStopped(string reason)
         {
+            // Our own stop, not the student trailing off. Ignore it.
+            if (_stoppingDeliberately) return;
+
             // Silence timeout while we were waiting on them: nudge, don't stall.
             if (State != ConversationState.Listening) return;
             if (_currentNode == null) return;
@@ -501,7 +521,7 @@ namespace CAIVR.Dialogue
 
         void Finish()
         {
-            speech?.StopListening();
+            StopListeningQuietly();
             SetState(ConversationState.Ended);
             Ended?.Invoke();
         }
