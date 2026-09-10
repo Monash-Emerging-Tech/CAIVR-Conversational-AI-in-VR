@@ -20,7 +20,14 @@
     "Dr Ellery's consultation hours are Tuesday and Thursday, 2pm to 4pm.",
     "There is a tutorial on Thursday morning.",
     "Dr Ellery does not read full drafts during consultation, but will comment on the first two pages if emailed.",
-    "The marking rubric rewards analysis over description, and an on-time partial submission scores better than a late complete one."
+    "The marking rubric rewards analysis over description, and an on-time partial submission scores better than a late complete one.",
+    "Group assessment marks can be adjusted individually if a student evidences that a teammate did not contribute.",
+    "Before Dr Ellery intervenes in a group dispute, she expects the student to have raised it with the group in writing.",
+    "The unit permits AI tools for grammar checking and for testing your own understanding, but not for generating the analysis, and any use must be declared in one sentence at the end of the submission.",
+    "Undeclared AI-generated analysis is treated as academic misconduct; declaring it and rewriting it in your own words is not.",
+    "Turnitin similarity scores flag quotes and reference lists too, so a high score is not by itself evidence of plagiarism.",
+    "The census date for this semester has already passed, so withdrawing now appears on the student's academic record.",
+    "Student Services accept walk-ins and can register students for adjustments that apply across all their units."
   ],
   "startNodeId": "greeting",
   "nodes": [
@@ -78,6 +85,62 @@
             "comments"
           ],
           "nextNodeId": "feedback_which"
+        },
+        {
+          "label": "Group work problem",
+          "intent": "The student has a problem with their group or a teammate on a group assessment.",
+          "keywords": [
+            "group",
+            "team",
+            "teammate",
+            "partner",
+            "group work",
+            "groupwork",
+            "my group",
+            "someone in my group",
+            "not doing",
+            "not contributing",
+            "carrying"
+          ],
+          "nextNodeId": "group_issue"
+        },
+        {
+          "label": "Academic integrity worry",
+          "intent": "The student is worried about plagiarism, referencing, or whether their use of AI is allowed.",
+          "keywords": [
+            "plagiarism",
+            "plagiarise",
+            "turnitin",
+            "similarity",
+            "ai",
+            "chatgpt",
+            "copilot",
+            "cheating",
+            "academic integrity",
+            "misconduct",
+            "allowed to use",
+            "is it ok to use"
+          ],
+          "nextNodeId": "integrity_which"
+        },
+        {
+          "label": "Struggling with the unit",
+          "intent": "The student is overwhelmed, falling behind generally, or considering withdrawing from the unit.",
+          "keywords": [
+            "struggling",
+            "falling behind",
+            "drop",
+            "dropping",
+            "withdraw",
+            "quit",
+            "too hard",
+            "cant keep up",
+            "can not keep up",
+            "failing",
+            "over my head",
+            "not coping"
+          ],
+          "nextNodeId": "struggling_open"
         }
       ]
     },
@@ -158,6 +221,21 @@
             "slacked"
           ],
           "nextNodeId": "extension_push"
+        },
+        {
+          "label": "Asks about the policy first",
+          "intent": "The student asks how long an extension can be, or what the rules are, before giving a reason.",
+          "keywords": [
+            "how long can",
+            "whats the maximum",
+            "what is the maximum",
+            "how much can you",
+            "what are the rules",
+            "policy",
+            "am i allowed",
+            "how does it work"
+          ],
+          "nextNodeId": "extension_policy"
         }
       ]
     },
@@ -250,6 +328,22 @@
             "no certificate"
           ],
           "nextNodeId": "extension_conditional"
+        },
+        {
+          "label": "Asks what counts",
+          "intent": "The student asks what documentation is acceptable, or how to get it.",
+          "keywords": [
+            "what counts",
+            "what do you need",
+            "what kind of",
+            "where do i get",
+            "how do i get",
+            "does a",
+            "would a",
+            "is a screenshot",
+            "what sort of"
+          ],
+          "nextNodeId": "extension_evidence_explain"
         }
       ]
     },
@@ -673,6 +767,22 @@
             "yes"
           ],
           "nextNodeId": "wrap_up_more"
+        },
+        {
+          "label": "Thanks the professor warmly",
+          "intent": "The student expresses genuine relief or gratitude beyond a simple no.",
+          "keywords": [
+            "really appreciate",
+            "thank you so much",
+            "youve been",
+            "you have been",
+            "helpful",
+            "means a lot",
+            "was worried",
+            "glad i came",
+            "feel better"
+          ],
+          "nextNodeId": "wrap_up_warm"
         }
       ]
     },
@@ -709,6 +819,826 @@
       "reprompt": "",
       "isEnd": true,
       "branches": []
+    },
+    {
+      "id": "extension_policy",
+      "speakerLine": "Fair question. With documentation I can give you up to a week. Without it, seventy-two hours is my limit. Anything longer goes to the faculty. So - which are we talking about?",
+      "expectation": "The student now gives their reason, knowing the policy.",
+      "reprompt": "So what's the reason you need it?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Concrete reason",
+          "intent": "The student gives a genuine reason: illness, injury, family emergency, bereavement, mental health.",
+          "keywords": [
+            "sick",
+            "unwell",
+            "ill",
+            "medical",
+            "doctor",
+            "hospital",
+            "family",
+            "emergency",
+            "died",
+            "funeral",
+            "mental health",
+            "anxiety",
+            "depression",
+            "injury",
+            "carer"
+          ],
+          "nextNodeId": "extension_evidence"
+        },
+        {
+          "label": "Vague reason",
+          "intent": "The student gives a weak or evasive reason: busy, behind, poor planning, work.",
+          "keywords": [
+            "busy",
+            "behind",
+            "work",
+            "shifts",
+            "forgot",
+            "no time",
+            "other assignments",
+            "left it",
+            "too late",
+            "procrastinated"
+          ],
+          "nextNodeId": "extension_push"
+        }
+      ]
+    },
+    {
+      "id": "extension_evidence_explain",
+      "speakerLine": "A medical certificate from any GP is fine, or a letter from Student Services if you're registered with them. A screenshot of a booking isn't enough on its own - it needs to say you were unfit to study.",
+      "expectation": "The student says whether they can get that.",
+      "reprompt": "So - can you get me something like that?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Can get it",
+          "intent": "The student says they have documentation or can obtain it.",
+          "keywords": [
+            "yes",
+            "i can",
+            "ill get",
+            "i will get",
+            "should be able",
+            "i think so",
+            "ive got",
+            "i have",
+            "ok",
+            "sure"
+          ],
+          "nextNodeId": "extension_granted"
+        },
+        {
+          "label": "Cannot get it",
+          "intent": "The student cannot obtain documentation.",
+          "keywords": [
+            "no",
+            "cant",
+            "can not",
+            "never went",
+            "didnt go",
+            "too late for that",
+            "dont have",
+            "do not have",
+            "nothing"
+          ],
+          "nextNodeId": "extension_conditional"
+        }
+      ]
+    },
+    {
+      "id": "group_issue",
+      "speakerLine": "Group work. Right, that's half the emails I get. What's actually happening?",
+      "expectation": "The student describes the group problem: a teammate not contributing, a disagreement, or scheduling.",
+      "reprompt": "What's going on with the group?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Teammate not contributing",
+          "intent": "One or more group members are not doing their share of the work.",
+          "keywords": [
+            "not doing",
+            "not contributing",
+            "hasnt done",
+            "has not done",
+            "doing nothing",
+            "carrying",
+            "ghosting",
+            "wont reply",
+            "will not reply",
+            "no response",
+            "lazy",
+            "all the work",
+            "by myself"
+          ],
+          "nextNodeId": "group_freeloader"
+        },
+        {
+          "label": "Disagreement in the group",
+          "intent": "The group disagrees about direction, approach, or quality of work.",
+          "keywords": [
+            "disagree",
+            "argument",
+            "fighting",
+            "conflict",
+            "different ideas",
+            "cant agree",
+            "can not agree",
+            "clash",
+            "wants to do",
+            "arguing"
+          ],
+          "nextNodeId": "group_conflict"
+        },
+        {
+          "label": "Cannot organise meetings",
+          "intent": "The group cannot find time to meet or coordinate.",
+          "keywords": [
+            "meet",
+            "meeting",
+            "schedule",
+            "timetable",
+            "busy",
+            "never free",
+            "timezone",
+            "cant find a time",
+            "can not find a time",
+            "organise"
+          ],
+          "nextNodeId": "group_logistics"
+        }
+      ]
+    },
+    {
+      "id": "group_freeloader",
+      "speakerLine": "That's frustrating, and it's more common than people admit. Have you raised it with them directly yet?",
+      "expectation": "The student says whether they have already spoken to the teammate.",
+      "reprompt": "Have you actually said something to them about it?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Has raised it",
+          "intent": "The student has already spoken to the teammate and it did not resolve.",
+          "keywords": [
+            "yes",
+            "i have",
+            "i did",
+            "we talked",
+            "i messaged",
+            "i told",
+            "spoke to",
+            "asked them",
+            "multiple times",
+            "several times"
+          ],
+          "nextNodeId": "group_escalate"
+        },
+        {
+          "label": "Has not raised it",
+          "intent": "The student has not spoken to the teammate yet, often out of awkwardness.",
+          "keywords": [
+            "no",
+            "not yet",
+            "havent",
+            "have not",
+            "didnt want",
+            "did not want",
+            "awkward",
+            "scared",
+            "nervous",
+            "dont know how",
+            "do not know how"
+          ],
+          "nextNodeId": "group_advise_first"
+        }
+      ]
+    },
+    {
+      "id": "group_advise_first",
+      "speakerLine": "Then that's your first step, and I know it's the uncomfortable one. Message the group, be specific about what's outstanding, and put a date on it. Keep it in writing so there's a record.",
+      "expectation": "The student agrees to speak to the group first.",
+      "reprompt": "Can you have that conversation this week?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Agrees",
+          "intent": "The student accepts the advice to raise it with the group directly.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "yes",
+            "will do",
+            "ill try",
+            "i will try",
+            "fine",
+            "makes sense",
+            "thank",
+            "thanks",
+            "ill message",
+            "good idea"
+          ],
+          "nextNodeId": "group_followup"
+        },
+        {
+          "label": "Reluctant",
+          "intent": "The student resists, doubts it will work, or is anxious about confrontation.",
+          "keywords": [
+            "wont work",
+            "will not work",
+            "pointless",
+            "no point",
+            "tried",
+            "dont think",
+            "do not think",
+            "rather not",
+            "scared",
+            "awkward",
+            "hate confrontation"
+          ],
+          "nextNodeId": "group_reassure"
+        }
+      ]
+    },
+    {
+      "id": "group_reassure",
+      "speakerLine": "I understand. But if it does come to me reallocating marks, the first thing I'll ask for is evidence you tried to sort it out. A polite message in the group chat is that evidence. It protects you.",
+      "expectation": "The student accepts that raising it is worth doing.",
+      "reprompt": "Does that make sense as a reason to do it?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Accepts",
+          "intent": "The student accepts the reasoning and will raise it.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "fair",
+            "makes sense",
+            "i see",
+            "alright",
+            "will do",
+            "ill do it",
+            "thank",
+            "thanks",
+            "understood"
+          ],
+          "nextNodeId": "group_followup"
+        }
+      ]
+    },
+    {
+      "id": "group_escalate",
+      "speakerLine": "Good - then you've done your part. Forward me the messages and I'll contact them directly. If it doesn't change, I can mark contributions individually. Nobody carries a group on their own in my unit.",
+      "expectation": "The student acknowledges, or asks what happens next.",
+      "reprompt": "Send me those messages and I'll take it from there. Alright?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student is satisfied and will send the evidence.",
+          "keywords": [
+            "thank",
+            "thanks",
+            "ok",
+            "okay",
+            "will do",
+            "ill send",
+            "i will send",
+            "great",
+            "appreciate",
+            "relieved",
+            "perfect"
+          ],
+          "nextNodeId": "group_followup"
+        }
+      ]
+    },
+    {
+      "id": "group_conflict",
+      "speakerLine": "Disagreement isn't automatically a problem - it usually means people care. What I'd do is write down the two options, list what each costs you in time, and decide as a group against the rubric rather than against each other.",
+      "expectation": "The student acknowledges or pushes back.",
+      "reprompt": "Try that and see whether it settles it. Sound workable?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student accepts the suggestion.",
+          "keywords": [
+            "ok",
+            "okay",
+            "thank",
+            "thanks",
+            "good idea",
+            "will try",
+            "ill try",
+            "makes sense",
+            "yeah",
+            "alright",
+            "worth a shot"
+          ],
+          "nextNodeId": "group_followup"
+        }
+      ]
+    },
+    {
+      "id": "group_logistics",
+      "speakerLine": "You don't all need to be in a room. Split the work into pieces that can be done alone, agree the interfaces in writing, and meet once a week for twenty minutes. Most groups over-meet and under-decide.",
+      "expectation": "The student acknowledges.",
+      "reprompt": "Would that work for your group?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student accepts the suggestion.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "thank",
+            "thanks",
+            "makes sense",
+            "we can try",
+            "will try",
+            "good idea",
+            "alright"
+          ],
+          "nextNodeId": "group_followup"
+        }
+      ]
+    },
+    {
+      "id": "group_followup",
+      "speakerLine": "And if it's still unresolved a week out from the due date, come back to me. Don't leave it until the night before - that's when my options run out.",
+      "expectation": "The student acknowledges.",
+      "reprompt": "Come back to me if it doesn't improve. Alright?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student agrees to come back if needed.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "will do",
+            "thank",
+            "thanks",
+            "understood",
+            "alright",
+            "ill come back",
+            "sure"
+          ],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "integrity_which",
+      "speakerLine": "I'd rather you ask than guess, so - what's the concern?",
+      "expectation": "The student says whether it is about AI use or about referencing and plagiarism.",
+      "reprompt": "What is it you're worried about?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Used AI",
+          "intent": "The student used or wants to use an AI tool and is unsure whether that is permitted.",
+          "keywords": [
+            "ai",
+            "chatgpt",
+            "gpt",
+            "copilot",
+            "gemini",
+            "claude",
+            "language model",
+            "used a tool",
+            "generator",
+            "is it allowed",
+            "am i allowed"
+          ],
+          "nextNodeId": "integrity_ai"
+        },
+        {
+          "label": "Referencing or plagiarism",
+          "intent": "The student is worried about citing sources, similarity scores, or accidental plagiarism.",
+          "keywords": [
+            "reference",
+            "referencing",
+            "cite",
+            "citation",
+            "quote",
+            "paraphrase",
+            "turnitin",
+            "similarity",
+            "plagiarism",
+            "copied",
+            "accidentally",
+            "source"
+          ],
+          "nextNodeId": "integrity_referencing"
+        }
+      ]
+    },
+    {
+      "id": "integrity_ai",
+      "speakerLine": "Alright. The unit's position is that you may use it to check grammar or to test your own understanding, but the analysis has to be yours, and you declare any use. So tell me honestly - what did you use it for?",
+      "expectation": "The student admits what they used AI for. Honesty here is the skill being practised.",
+      "reprompt": "What did you actually use it for?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Editing or understanding",
+          "intent": "The student used AI for grammar, proofreading, explaining a concept, or checking their own understanding.",
+          "keywords": [
+            "grammar",
+            "spelling",
+            "proofread",
+            "edit",
+            "editing",
+            "explain",
+            "understand",
+            "check my",
+            "reword",
+            "tidy",
+            "fix my writing",
+            "clarify"
+          ],
+          "nextNodeId": "integrity_ai_ok"
+        },
+        {
+          "label": "Generating content",
+          "intent": "The student used AI to write part of the actual argument or content.",
+          "keywords": [
+            "wrote",
+            "write",
+            "generated",
+            "drafted",
+            "the intro",
+            "a paragraph",
+            "for me",
+            "most of",
+            "some of it",
+            "the whole",
+            "content"
+          ],
+          "nextNodeId": "integrity_ai_problem"
+        }
+      ]
+    },
+    {
+      "id": "integrity_ai_ok",
+      "speakerLine": "That's within the rules. Add a line at the end saying what you used and what for - one sentence is enough. Declaring it is what keeps it above board.",
+      "expectation": "The student acknowledges.",
+      "reprompt": "Add that declaration and you're fine. Clear?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student understands and will declare it.",
+          "keywords": [
+            "ok",
+            "okay",
+            "thank",
+            "thanks",
+            "will do",
+            "got it",
+            "understood",
+            "great",
+            "ill add",
+            "i will add",
+            "makes sense",
+            "relieved"
+          ],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "integrity_ai_problem",
+      "speakerLine": "Right - I'm glad you told me. That part has to be rewritten in your own words, because as it stands it isn't your analysis and the rubric marks your analysis. Do that before you submit and there's no misconduct issue. Hide it and there is.",
+      "expectation": "The student accepts and agrees to rewrite.",
+      "reprompt": "Rewrite that section and declare the rest. Can you do that?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Accepts",
+          "intent": "The student accepts and will rewrite the section.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "ill rewrite",
+            "i will rewrite",
+            "will do",
+            "thank",
+            "thanks",
+            "fair",
+            "understood",
+            "sorry",
+            "ill fix"
+          ],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "integrity_referencing",
+      "speakerLine": "Similarity scores frighten people more than they should - quotes and reference lists both flag. What matters is whether an idea that isn't yours is attributed. Where are you unsure?",
+      "expectation": "The student describes what they are unsure about.",
+      "reprompt": "Which bit are you unsure about?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Describes the worry",
+          "intent": "The student explains their referencing concern, however roughly.",
+          "keywords": [
+            "paraphrase",
+            "quote",
+            "same words",
+            "similar",
+            "percent",
+            "score",
+            "i read",
+            "from a source",
+            "my own words",
+            "forgot to",
+            "common knowledge",
+            "textbook"
+          ],
+          "nextNodeId": "integrity_referencing_answer"
+        }
+      ]
+    },
+    {
+      "id": "integrity_referencing_answer",
+      "speakerLine": "Then cite it. The rule I give everyone: if you knew it before you started reading, it's yours. If you learned it from something, it gets a citation. Over-citing has never cost anyone a mark in my unit.",
+      "expectation": "The student acknowledges.",
+      "reprompt": "Cite it and you're safe. Alright?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student understands.",
+          "keywords": [
+            "ok",
+            "okay",
+            "thank",
+            "thanks",
+            "got it",
+            "makes sense",
+            "will do",
+            "understood",
+            "good",
+            "ill cite",
+            "that helps"
+          ],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "struggling_open",
+      "speakerLine": "Okay. Thank you for telling me - that's not an easy thing to say out loud. How long have you been feeling like this?",
+      "expectation": "The student says how long they have been struggling.",
+      "reprompt": "How long has it been like this?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Recently",
+          "intent": "The student says it is recent, a few weeks, or since a specific event.",
+          "keywords": [
+            "few weeks",
+            "couple of weeks",
+            "recently",
+            "since",
+            "this month",
+            "lately",
+            "last few",
+            "started when",
+            "not long"
+          ],
+          "nextNodeId": "struggling_support"
+        },
+        {
+          "label": "All semester",
+          "intent": "The student says it has been ongoing since the start, or a long time.",
+          "keywords": [
+            "all semester",
+            "the whole",
+            "since the start",
+            "beginning",
+            "always",
+            "months",
+            "long time",
+            "from day one",
+            "never really"
+          ],
+          "nextNodeId": "struggling_ongoing"
+        }
+      ]
+    },
+    {
+      "id": "struggling_ongoing",
+      "speakerLine": "That's a long time to carry on your own. I'm going to be straight with you: this is bigger than one assignment, and it's not something you and I can fix in a twenty-minute consultation.",
+      "expectation": "The student responds to being told they need more support.",
+      "reprompt": "Does that sound fair?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Accepts",
+          "intent": "The student accepts that they need more support.",
+          "keywords": [
+            "yeah",
+            "yes",
+            "ok",
+            "okay",
+            "i know",
+            "probably",
+            "fair",
+            "youre right",
+            "you are right",
+            "suppose",
+            "i guess"
+          ],
+          "nextNodeId": "struggling_support"
+        },
+        {
+          "label": "Deflects",
+          "intent": "The student downplays it or insists they are fine.",
+          "keywords": [
+            "im fine",
+            "i am fine",
+            "its fine",
+            "not that bad",
+            "ill manage",
+            "i will manage",
+            "dont worry",
+            "do not worry",
+            "no its ok",
+            "nothing"
+          ],
+          "nextNodeId": "struggling_persist"
+        }
+      ]
+    },
+    {
+      "id": "struggling_persist",
+      "speakerLine": "Maybe. But you came in here and said it, and people don't usually say that when nothing's wrong. I'm not going to push - I'd just rather you talked to someone who does this properly than to me.",
+      "expectation": "The student accepts a referral.",
+      "reprompt": "Would you be willing to talk to someone?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Accepts",
+          "intent": "The student agrees to seek support.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "alright",
+            "i could",
+            "maybe",
+            "ill think",
+            "i will think",
+            "fine",
+            "thank",
+            "thanks",
+            "who"
+          ],
+          "nextNodeId": "struggling_support"
+        }
+      ]
+    },
+    {
+      "id": "struggling_support",
+      "speakerLine": "Student Services are in Building B, level two, and you can walk in - you don't need an appointment. They can also register you for adjustments that apply across all your units, not just mine. Will you go this week?",
+      "expectation": "The student commits to contacting support, or asks about the unit itself.",
+      "reprompt": "Will you go and see them this week?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Will go",
+          "intent": "The student agrees to contact Student Services.",
+          "keywords": [
+            "yes",
+            "yeah",
+            "ok",
+            "okay",
+            "ill go",
+            "i will go",
+            "this week",
+            "will do",
+            "thank",
+            "thanks",
+            "alright",
+            "i can do that"
+          ],
+          "nextNodeId": "struggling_unit"
+        },
+        {
+          "label": "Asks about dropping",
+          "intent": "The student asks about withdrawing from the unit or the consequences of doing so.",
+          "keywords": [
+            "drop",
+            "dropping",
+            "withdraw",
+            "pull out",
+            "quit",
+            "census",
+            "fail",
+            "repeat",
+            "what happens if",
+            "too late to"
+          ],
+          "nextNodeId": "struggling_drop"
+        }
+      ]
+    },
+    {
+      "id": "struggling_drop",
+      "speakerLine": "You can withdraw without academic penalty up to the census date, which has passed for this semester - so a withdrawal now shows on your record. That's not the end of the world, but it's a decision to make with an adviser, not in a corridor.",
+      "expectation": "The student acknowledges.",
+      "reprompt": "Talk to an adviser before you decide anything. Alright?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student accepts the advice to talk to an adviser first.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "alright",
+            "thank",
+            "thanks",
+            "i will",
+            "will do",
+            "makes sense",
+            "understood",
+            "fair"
+          ],
+          "nextNodeId": "struggling_unit"
+        }
+      ]
+    },
+    {
+      "id": "struggling_unit",
+      "speakerLine": "And as for this unit - submit what you have by Friday, even if it's incomplete. A partial submission on time scores better than nothing, and it keeps your options open while you sort the rest out.",
+      "expectation": "The student acknowledges.",
+      "reprompt": "Get me something by Friday, even if it's rough. Can you do that?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Acknowledges",
+          "intent": "The student agrees to submit what they have.",
+          "keywords": [
+            "ok",
+            "okay",
+            "yeah",
+            "will do",
+            "ill try",
+            "i will try",
+            "thank",
+            "thanks",
+            "alright",
+            "i can",
+            "understood"
+          ],
+          "nextNodeId": "wrap_up"
+        }
+      ]
+    },
+    {
+      "id": "wrap_up_warm",
+      "speakerLine": "You're welcome. And for what it's worth - the students who come and ask are the ones who tend to be fine. It's the ones who don't that worry me.",
+      "expectation": "The student closes the conversation.",
+      "reprompt": "Anything else before you go?",
+      "isEnd": false,
+      "branches": [
+        {
+          "label": "Closes",
+          "intent": "The student says goodbye or has nothing further.",
+          "keywords": [
+            "no",
+            "thats all",
+            "that is all",
+            "thank",
+            "thanks",
+            "bye",
+            "see you",
+            "cheers",
+            "im good",
+            "i am good",
+            "nothing else"
+          ],
+          "nextNodeId": "farewell"
+        }
+      ]
     }
   ]
 }
