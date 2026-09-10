@@ -142,7 +142,7 @@ namespace CAIVR.Speech
                         if (level > StartLevel)
                         {
                             speechStarted = true;
-                            PartialResult?.Invoke("listening…");
+                            PartialResult?.Invoke("listening...");
                         }
                         else if (elapsed > NoSpeechTimeout)
                         {
@@ -173,7 +173,7 @@ namespace CAIVR.Speech
                 yield break;
             }
 
-            PartialResult?.Invoke("transcribing…");
+            PartialResult?.Invoke("transcribing...");
             yield return Transcribe(WavEncoder.Encode(_clip, samples));
         }
 

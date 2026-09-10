@@ -46,7 +46,7 @@ namespace CAIVR.Menu
             public Func<string> Read;
         }
 
-        string _llmStatus = "checking…";
+        string _llmStatus = "checking...";
 
         void Awake()
         {
@@ -314,7 +314,7 @@ namespace CAIVR.Menu
 
             var scenarioName = Text(card.transform, "Name", new Vector2(0f, 0f), new Vector2(1f, 1f),
                 new Vector2(28f, 44f), new Vector2(-28f, -14f), 30, TextAlignmentOptions.Left);
-            scenarioName.text = "Consultation — Monash College";
+            scenarioName.text = "Consultation - Monash College";
 
             var scenarioDesc = Text(card.transform, "Desc", new Vector2(0f, 0f), new Vector2(1f, 1f),
                 new Vector2(28f, 12f), new Vector2(-28f, -50f), 22, TextAlignmentOptions.Left);
@@ -331,8 +331,8 @@ namespace CAIVR.Menu
 
             AddRow(root, "Dialogue system", ref y,
                 () => CaivrSettings.SelectorMode == 0
-                    ? "System 1 — scripted keywords"
-                    : $"System 2 — {_llmStatus}",
+                    ? "System 1 - scripted keywords"
+                    : $"System 2 - {_llmStatus}",
                 CycleSelector);
 
             AddRow(root, "Professor voice", ref y,

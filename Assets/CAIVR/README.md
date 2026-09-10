@@ -1,4 +1,4 @@
-# CAIVR conversation framework — flat-screen demo
+# CAIVR conversation framework - flat-screen demo
 
 Proves the conversation loop from the Workerbee notes end to end, without VR:
 
@@ -17,7 +17,7 @@ services, no usage caps.
 1. In Unity: **CAIVR → Create Speech Demo Scene**
 2. Press **Play**
 3. Read the background context, press **SPACE** to start
-4. Talk (or type — see below). **R** repeats the professor's question.
+4. Talk (or type - see below). **R** repeats the professor's question.
 
 That's the whole demo.
 
@@ -27,8 +27,8 @@ That's the whole demo.
 
 | Backend | Cost | Where it works | Setup |
 |---|---|---|---|
-| **Windows Dictation** (default) | Free | Windows only — Editor + PC build | Enable *Settings → Privacy → Speech → Online speech recognition* |
-| **Keyboard** (fallback) | Free | Everywhere | None — auto-selected when the mic is unavailable |
+| **Windows Dictation** (default) | Free | Windows only - Editor + PC build | Enable *Settings → Privacy → Speech → Online speech recognition* |
+| **Keyboard** (fallback) | Free | Everywhere | None - auto-selected when the mic is unavailable |
 
 `SpeechService` probes for the microphone and silently falls back to typing, so
 the demo never dead-ends in front of a stakeholder. Force either one with the
@@ -37,15 +37,15 @@ the demo never dead-ends in front of a stakeholder. Force either one with the
 ### The Quest problem
 
 `UnityEngine.Windows.Speech` **does not exist on Android**, so it will not work
-in a standalone Quest build. This is known and deliberate — it was the fastest
+in a standalone Quest build. This is known and deliberate - it was the fastest
 way to prove the loop works, not the shipping answer.
 
 Free options for Quest when we get there, all of which sit behind the existing
 `ISpeechRecognizer` interface and change nothing downstream:
 
-- **Vosk** — offline, open source, small models, runs on-device
-- **whisper.cpp / whisper.unity** — offline, open source, better accuracy, heavier
-- **Unity Inference Engine** — run an ONNX speech model in-engine
+- **Vosk** - offline, open source, small models, runs on-device
+- **whisper.cpp / whisper.unity** - offline, open source, better accuracy, heavier
+- **Unity Inference Engine** - run an ONNX speech model in-engine
 
 ---
 
@@ -55,7 +55,7 @@ Still open in the notes, so nothing here depends on the answer. Both implement
 `IBranchSelector` and swap via the **Selector Mode** dropdown on
 `ConversationRunner`.
 
-| | System 1 — `KeywordBranchSelector` | System 2 — `LlmBranchSelector` |
+| | System 1 - `KeywordBranchSelector` | System 2 - `LlmBranchSelector` |
 |---|---|---|
 | How | Keyword matching | A model reads intent and picks the branch |
 | Cost | Free | Free (local model, or a free cloud tier) |
@@ -65,7 +65,7 @@ Still open in the notes, so nothing here depends on the answer. Both implement
 | Deterministic | Yes | Mostly (temperature 0) |
 | Setup | None | An endpoint, and a key if it's a cloud one |
 
-Run the same script through both and judge them side by side — that comparison
+Run the same script through both and judge them side by side - that comparison
 is the point, and it's why the seam exists.
 
 **Why System 1 loses:** a student said *"I left it too late"* while the keyword
@@ -76,7 +76,7 @@ understand phrasings somebody typed in advance, so they need patching forever.
 
 `LlmBranchSelector` speaks the **OpenAI chat-completions format**, which nearly
 every provider implements. The same code runs against a local model and a cloud
-one — only the URL changes. That matters because **neither a standalone Quest
+one - only the URL changes. That matters because **neither a standalone Quest
 nor a WebGL build can host a model**, and both are shipping targets.
 
 | Target | Endpoint | Model | Key |
@@ -90,7 +90,7 @@ leave it running. Nothing leaves the machine.
 If the endpoint is unreachable, the runner says so once, **drops to System 1,
 and redoes that turn** rather than silently taking a wrong branch.
 
-**Never commit a key.** A key inside a build can be extracted from it — before
+**Never commit a key.** A key inside a build can be extracted from it - before
 students see this, the request must go through a small server of ours that holds
 the key instead.
 
@@ -99,19 +99,19 @@ the key instead.
 ## Writing conversations
 
 Scenarios are JSON under `Resources/CAIVR/Conversations/`, deliberately **not**
-ScriptableObjects or scene data — writers can edit them without opening Unity,
+ScriptableObjects or scene data - writers can edit them without opening Unity,
 and they don't merge-conflict.
 
 ```
 nodes[]
   id             unique key
   speakerLine    what the professor says
-  expectation    designer note — also fed to System 2 as context
+  expectation    designer note - also fed to System 2 as context
   reprompt       said when nothing matched
   isEnd          terminates the conversation
   branches[]
     label        shown in the debug HUD
-    intent       plain English — this is what System 2 reasons over
+    intent       plain English - this is what System 2 reasons over
     keywords[]   what System 1 matches on
     nextNodeId   where this branch goes
 ```
@@ -135,10 +135,10 @@ refuses to start a broken script rather than failing halfway through.
 - [x] Random premade context per run
 - [x] "Ask to repeat that" (**R**)
 - [x] Subtitles (the professor's line is always on screen)
-- [ ] Toggleable subtitles — trivial once there's a settings menu
+- [ ] Toggleable subtitles - trivial once there's a settings menu
 - [ ] Real-time translated subtitles
-- [ ] Lipsync — `ProfessorLine` is the hook to drive it from
-- [ ] Talking to multiple people at once — would need a speaker field per node
+- [ ] Lipsync - `ProfessorLine` is the hook to drive it from
+- [ ] Talking to multiple people at once - would need a speaker field per node
 - [ ] In-world context reference (laptop / sticky note / notebook)
 
 ---
@@ -166,5 +166,5 @@ Editor/
   DemoSceneBuilder.cs           generates the scene, validates scripts
 ```
 
-`ConversationRunner` knows nothing about VR or UI — it raises events. The VR
+`ConversationRunner` knows nothing about VR or UI - it raises events. The VR
 scene will subscribe to the same events the demo HUD does.
