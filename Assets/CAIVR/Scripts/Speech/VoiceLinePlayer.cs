@@ -17,13 +17,21 @@ namespace CAIVR.Speech
     /// </summary>
     public sealed class VoiceLinePlayer : MonoBehaviour
     {
-        public const string ResourceFolder = "CAIVR/VO";
-
         /// <summary>Used when a node has no reprompt line of its own.</summary>
         public const string FallbackRepromptKey = "_fallback_reprompt";
 
+        [Tooltip("Which baked voice set to play. Each TTS engine writes its own folder, " +
+                 "so switching engines is changing this string - no code, no rebuild.")]
+        [SerializeField] string resourceFolder = "CAIVR/VO_sapi";
+
         [Tooltip("Seconds of silence left after a line before the mic opens.")]
         [SerializeField] float tailPadding = 0.25f;
+
+        public string ResourceFolder
+        {
+            get => resourceFolder;
+            set => resourceFolder = value;
+        }
 
         AudioSource _source;
 
@@ -55,7 +63,7 @@ namespace CAIVR.Speech
             duration = 0f;
             if (string.IsNullOrEmpty(key)) return false;
 
-            var clip = Resources.Load<AudioClip>($"{ResourceFolder}/{key}");
+            var clip = Resources.Load<AudioClip>($"{resourceFolder}/{key}");
             if (clip == null) return false;
 
             _source.Stop();
