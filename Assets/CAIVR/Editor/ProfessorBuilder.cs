@@ -75,9 +75,49 @@ namespace CAIVR.EditorTools
             var face = SetUpFace(character);
             SetUpComponents(root, bones, face, voice);
             LightFromFront(root.transform);
+            AddFaceLight(root.transform);
 
             return root;
         }
+
+        /// <summary>
+        /// A soft warm light on her face. The room is lit by baked light, which a moving character can
+        /// only pick up from light probes: a blurry average that leaves a face dim and flat. One
+        /// real light, aimed at her and kept gentle, gives the face shape and a little life.
+        ///
+        /// It uses the render pipeline's one additional light, so it is only added if the project has
+        /// additional lights switched on (the Quest-friendly profile used to have them off).
+        /// </summary>
+        static void AddFaceLight(Transform professor)
+        {
+            var pipeline = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline
+                as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+
+            if (pipeline == null || pipeline.additionalLightsRenderingMode == UnityEngine.Rendering.Universal.LightRenderingMode.Disabled)
+            {
+                Debug.Log("[CAIVR] Additional lights are off in the render pipeline asset, so the professor has no face light.");
+                return;
+            }
+
+            var go = new GameObject("Professor Face Light");
+            go.transform.SetParent(professor, false);
+
+            // In front of her, above and a little to one side, as a ceiling light would be.
+            go.transform.localPosition = new Vector3(-0.30f, 1.95f, 1.10f);
+            go.transform.LookAt(professor.position + Vector3.up * 1.12f);
+
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Spot;
+            light.color = new Color(1f, 0.94f, 0.86f);
+            light.intensity = FaceLightIntensity;
+            light.range = 2.6f;
+            light.spotAngle = 60f;
+            light.innerSpotAngle = 30f;
+            light.shadows = LightShadows.None;
+            light.lightmapBakeType = LightmapBakeType.Realtime;
+        }
+
+        const float FaceLightIntensity = 2.2f;
 
         /// <summary>
         /// Makes sure the room's one real light is falling on her face.

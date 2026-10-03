@@ -13,8 +13,8 @@ namespace CAIVR.EditorTools
     /// are cut out by their alpha and drawn two-sided; the clear dome over each eye is a
     /// glossy highlight with no colour of its own.
     ///
-    /// These are generated fresh on every build, so a change to the table below always
-    /// takes effect and nothing stale is left lying around.
+    /// These are regenerated on every build, in place, so a change to the table below always
+    /// takes effect without the materials changing identity.
     /// </summary>
     static class ProfessorMaterials
     {
@@ -108,18 +108,12 @@ namespace CAIVR.EditorTools
         {
             Directory.CreateDirectory(Folder);
             AssetDatabase.Refresh();
-
-            if (!AssetDatabase.IsValidFolder(Folder)) return;
-
-            foreach (var guid in AssetDatabase.FindAssets("t:Material", new[] { Folder }))
-                AssetDatabase.DeleteAsset(AssetDatabase.GUIDToAssetPath(guid));
         }
 
         static Material Build(string name)
         {
             var path = $"{Folder}/{name}.mat";
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (existing != null) return existing;
 
             var recipe = RecipeFor(name);
 
@@ -154,6 +148,16 @@ namespace CAIVR.EditorTools
                 case Kind.Cutout: SetCutout(material, recipe.Cutoff); break;
                 case Kind.Blended: SetBlended(material, premultiplied: false); break;
                 case Kind.Glass: SetGlass(material); break;
+            }
+
+            // Updated in place when it already exists, so its identity (and everything in the scene
+            // that points at it) stays the same from one build to the next.
+            if (existing != null)
+            {
+                EditorUtility.CopySerialized(material, existing);
+                Object.DestroyImmediate(material);
+                EditorUtility.SetDirty(existing);
+                return existing;
             }
 
             AssetDatabase.CreateAsset(material, path);
