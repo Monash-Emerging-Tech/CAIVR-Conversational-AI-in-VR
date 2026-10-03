@@ -6,7 +6,7 @@ namespace CAIVR.Dialogue
     /// The seam between the two systems Billy put to the group in Workerbee #1.
     ///
     ///   System 1 - <see cref="KeywordBranchSelector"/>: pure scripted matching.
-    ///   System 2 - <see cref="AnthropicBranchSelector"/>: ask a model which branch fits.
+    ///   System 2 - <see cref="LlmBranchSelector"/>: ask a model which branch fits.
     ///
     /// The runner does not know or care which one it has. That is the point:
     /// the System 1 vs System 2 decision is still open, so nothing downstream is
