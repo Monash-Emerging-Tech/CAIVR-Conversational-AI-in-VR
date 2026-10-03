@@ -15,7 +15,8 @@ namespace CAIVR.Menu
         const string MicKey = "caivr.microphone";
         const string SelectorKey = "caivr.selector";
         const string VoiceSetKey = "caivr.voiceset";
-        const string SubtitlesKey = "caivr.subtitles";
+        // v2: subtitles became opt-in, so the old stored value must not carry over.
+        const string SubtitlesKey = "caivr.subtitles.v2";
 
         /// <summary>Empty string means "whatever the OS considers default".</summary>
         public static string MicrophoneDevice
@@ -39,7 +40,7 @@ namespace CAIVR.Menu
 
         public static bool SubtitlesEnabled
         {
-            get => PlayerPrefs.GetInt(SubtitlesKey, 1) == 1;
+            get => PlayerPrefs.GetInt(SubtitlesKey, 0) == 1;
             set { PlayerPrefs.SetInt(SubtitlesKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 

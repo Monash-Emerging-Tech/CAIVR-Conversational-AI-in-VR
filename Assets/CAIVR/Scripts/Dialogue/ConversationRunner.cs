@@ -125,6 +125,17 @@ namespace CAIVR.Dialogue
             // The menu is the source of truth when we came through it. Playing
             // this scene directly from the Editor still works - it just uses
             // whatever was last chosen, which is what you want while iterating.
+            ApplyMenuSettings();
+        }
+
+        /// <summary>
+        /// Re-reads the dialogue system choice from the saved menu settings and
+        /// rebuilds the selector. Awake does this once, but a menu that lives
+        /// inside the scene is used AFTER Awake, so it calls this when the student
+        /// has finished choosing.
+        /// </summary>
+        public void ApplyMenuSettings()
+        {
             if (useMenuSettings)
             {
                 selectorMode = (SelectorMode)Menu.CaivrSettings.SelectorMode;

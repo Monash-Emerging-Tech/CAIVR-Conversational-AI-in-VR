@@ -21,7 +21,12 @@ namespace CAIVR.EditorTools
     {
         const string MenuPath = "CAIVR/Play From Main Menu";
         const string PrefKey = "caivr.editor.playFromMenu";
-        const string MenuScenePath = "Assets/CAIVR/Scenes/MainMenu.unity";
+
+        // The experience now begins inside the consultation room, where the menu is an
+        // object on the table. The old flat menu is only a fallback for a fresh clone
+        // where the room has not been generated yet.
+        const string EntryScenePath = "Assets/CAIVR/Scenes/ConsultationVR.unity";
+        const string LegacyMenuScenePath = "Assets/CAIVR/Scenes/MainMenu.unity";
 
         static bool Enabled
         {
@@ -44,7 +49,8 @@ namespace CAIVR.EditorTools
                 return;
             }
 
-            var scene = AssetDatabase.LoadAssetAtPath<SceneAsset>(MenuScenePath);
+            var scene = AssetDatabase.LoadAssetAtPath<SceneAsset>(EntryScenePath)
+                        ?? AssetDatabase.LoadAssetAtPath<SceneAsset>(LegacyMenuScenePath);
 
             if (scene == null)
             {
@@ -64,7 +70,7 @@ namespace CAIVR.EditorTools
             Apply();
 
             Debug.Log(Enabled
-                ? "[CAIVR] Play now starts at the main menu, like a build does."
+                ? "[CAIVR] Play now starts at the entry scene (the consultation room), like a build does."
                 : "[CAIVR] Play now starts at whichever scene is open.");
         }
 

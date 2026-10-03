@@ -93,7 +93,7 @@ namespace CAIVR.Menu
         /// Finds the baked voice sets on disk in the Editor, and falls back to the
         /// known folders in a build, where the Assets folder no longer exists.
         /// </summary>
-        static string[] DiscoverVoiceSets()
+        public static string[] DiscoverVoiceSets()
         {
 #if UNITY_EDITOR
             if (Directory.Exists(VoRoot))
@@ -111,7 +111,7 @@ namespace CAIVR.Menu
             return new[] { "CAIVR/VO_edge", "CAIVR/VO_sapi" };
         }
 
-        static string PrettyVoiceSet(string resourcePath)
+        public static string PrettyVoiceSet(string resourcePath)
         {
             var name = resourcePath.Replace("CAIVR/VO_", "");
             return name switch

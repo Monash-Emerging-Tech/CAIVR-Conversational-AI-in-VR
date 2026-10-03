@@ -61,9 +61,19 @@ namespace CAIVR.Speech
         [Tooltip("Take the voice set from the main menu rather than the field above.")]
         [SerializeField] bool useMenuSettings = true;
 
-        void Awake()
+        /// <summary>Re-reads the voice choice from the saved menu settings.</summary>
+        public void ApplyMenuSettings()
         {
             if (useMenuSettings) resourceFolder = Menu.CaivrSettings.VoiceSet;
+        }
+
+        void Awake()
+        {
+            ApplyMenuSettings();
+
+            // Awake order between components is not guaranteed. If something such
+            // as the professor avatar has already supplied a spatial output, keep it.
+            if (_externalOutput) return;
 
             _source = GetComponent<AudioSource>();
             if (_source == null) _source = gameObject.AddComponent<AudioSource>();
@@ -71,9 +81,28 @@ namespace CAIVR.Speech
             _source.playOnAwake = false;
             _source.loop = false;
 
-            // 2D for the flat demo. The VR scene will set spatialBlend to 1 and
-            // parent this to the professor's head so it comes from the right place.
+            // 2D for the flat demo. In VR the avatar supplies its own spatial
+            // source on the professor's head via UseOutput.
             _source.spatialBlend = 0f;
+        }
+
+        bool _externalOutput;
+
+        /// <summary>
+        /// Plays through a different AudioSource, for example one parented to the
+        /// professor's head so the voice comes from where she is sitting.
+        /// Safe to call before or after this component's own Awake.
+        /// </summary>
+        public void UseOutput(AudioSource output)
+        {
+            if (output == null) return;
+
+            if (_source != null && _source != output) _source.Stop();
+
+            _source = output;
+            _source.playOnAwake = false;
+            _source.loop = false;
+            _externalOutput = true;
         }
 
         /// <summary>
