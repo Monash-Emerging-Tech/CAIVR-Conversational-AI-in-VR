@@ -12,23 +12,43 @@ namespace CAIVR.VR
     /// to work out which sounds are being made, which is cheap, runs on a Quest,
     /// and looks believable at conversational distance.
     ///
-    /// It drives whichever of these you give it, so it works with a placeholder
-    /// today and the real rigged head later without touching this code:
+    /// It drives whichever of these you give it, so it works with any head
+    /// without touching this code:
     ///   - a blendshape on a face mesh (the usual rigged-head setup)
     ///   - a jaw bone
-    ///   - a plain transform that gets squashed (used by the placeholder)
+    ///   - a plain transform that gets squashed (for a simple stand-in figure)
     /// </summary>
     public sealed class LipSyncDriver : MonoBehaviour
     {
         [SerializeField] VoiceLinePlayer voice;
 
         [Header("Targets (any combination)")]
+        [Tooltip("A face with named blendshapes (Character Creator style). The usual rigged-head setup.")]
+        [SerializeField] FaceRig faceRig;
+
+        [Tooltip("Shape that opens the jaw, and how far it opens at full volume (0..1).")]
+        [SerializeField] string jawShape = "Jaw_Open";
+        [SerializeField, Range(0f, 1f)] float jawMaxWeight = 0.35f;
+
+        [Tooltip("Shape that rounds and parts the lips, and how far at full volume (0..1).")]
+        [SerializeField] string openShape = "V_Open";
+        [SerializeField, Range(0f, 1f)] float openMaxWeight = 0.55f;
+
+        [Tooltip("Lip shapes that are mixed in over time so the mouth does not make the same shape every syllable.")]
+        [SerializeField] string[] varietyShapes = { "V_Wide", "V_Tight_O" };
+        [SerializeField, Range(0f, 1f)] float varietyMaxWeight = 0.4f;
+        [SerializeField] float varietyHz = 3.1f;
+
         [SerializeField] SkinnedMeshRenderer face;
         [Tooltip("Index of the mouth-open blendshape, or -1 for none.")]
         [SerializeField] int mouthBlendShape = -1;
 
         [SerializeField] Transform jaw;
         [SerializeField] float jawOpenDegrees = 16f;
+
+        [Tooltip("The jaw's hinge, in the jaw bone's own space. Zero means its local X axis. A model's bones are rarely " +
+                 "oriented the same way, so the scene builder works this out rather than guessing.")]
+        [SerializeField] Vector3 jawAxis;
 
         [SerializeField] Transform mouth;
         [SerializeField, Range(0.05f, 1f)] float mouthClosedScaleY = 0.15f;
@@ -129,17 +149,41 @@ namespace CAIVR.VR
 
         void Apply()
         {
+            if (faceRig != null) ApplyToFaceRig();
+
             if (face != null && mouthBlendShape >= 0)
                 face.SetBlendShapeWeight(mouthBlendShape, _open * 100f);
 
             if (jaw != null)
-                jaw.localRotation = _jawClosed * Quaternion.Euler(jawOpenDegrees * _open, 0f, 0f);
+            {
+                var axis = jawAxis.sqrMagnitude > 0.0001f ? jawAxis.normalized : Vector3.right;
+                jaw.localRotation = _jawClosed * Quaternion.AngleAxis(jawOpenDegrees * _open, axis);
+            }
 
             if (mouth != null)
             {
                 var scale = _mouthScale;
                 scale.y = Mathf.Lerp(_mouthScale.y * mouthClosedScaleY, _mouthScale.y, _open);
                 mouth.localScale = scale;
+            }
+        }
+
+        /// <summary>
+        /// Jaw and lips open with the volume, and one of a few other lip shapes is
+        /// blended in on a slow wander. Not real visemes, which would need the sounds
+        /// worked out, but enough that the mouth is never making the same shape twice
+        /// in a row, which is what separates talking from a flapping jaw.
+        /// </summary>
+        void ApplyToFaceRig()
+        {
+            faceRig.Set(jawShape, _open * jawMaxWeight);
+            faceRig.Set(openShape, _open * openMaxWeight);
+
+            for (var i = 0; i < varietyShapes.Length; i++)
+            {
+                // Each shape wanders on its own phase, so they take turns rather than moving together.
+                var wander = Mathf.PerlinNoise(Time.time * varietyHz, i * 17.3f);
+                faceRig.Set(varietyShapes[i], _open * varietyMaxWeight * wander);
             }
         }
     }

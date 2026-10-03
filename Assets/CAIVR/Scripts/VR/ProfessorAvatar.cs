@@ -11,9 +11,8 @@ namespace CAIVR.VR
     ///   - her voice comes from her head, not from everywhere
     ///   - her head turns to look at you, within a believable range
     ///
-    /// The model is a placeholder for now (modelling is still working on the
-    /// rigged interviewer). Replacing it means pointing <see cref="head"/> at the
-    /// new model's head bone; nothing else here changes.
+    /// Which model she is does not matter here. Swapping the model means pointing
+    /// <see cref="head"/> at the new model's head bone; nothing else changes.
     /// </summary>
     public sealed class ProfessorAvatar : MonoBehaviour
     {
