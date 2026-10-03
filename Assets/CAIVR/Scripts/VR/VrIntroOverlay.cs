@@ -26,6 +26,14 @@ namespace CAIVR.VR
     {
         static readonly Vector2 CardPixels = new Vector2(1240f, 700f);
 
+        /// <summary>Draws over the whole room. The headset's hands are lifted above it, see <see cref="ExperienceRig"/>.</summary>
+        public const int FadeOrder = 100;
+
+        // About arm's reach, so the Start button can be poked, at the same apparent size
+        // as a 1.35 m wide card 1.4 m away.
+        const float CardDistanceHeadset = 0.75f;
+        const float CardWidthHeadset = 0.72f;
+
         Camera _camera;
         Canvas _fadeCanvas;
         Canvas _cardCanvas;
@@ -130,17 +138,33 @@ namespace CAIVR.VR
         void Build()
         {
             _fadeCanvas = VrUi.CreateWorldCanvas("Fade", transform, new Vector2(2000f, 2000f), 4f);
-            // Above everything else drawn in the transparent queue, so nothing
-            // peeks through the black.
+
+            // Above everything in the room, so nothing peeks through the black. (The room's
+            // own materials are in the transparent queue, so this has to beat them.) In a
+            // headset the hands are sorted above this, so they stay visible.
             _fadeCanvas.overrideSorting = true;
-            _fadeCanvas.sortingOrder = 100;
+            _fadeCanvas.sortingOrder = FadeOrder;
 
             _fade = VrUi.Surface(_fadeCanvas.transform, "Black", Layout.Fill(), new Color(0f, 0f, 0f, _alpha), 1f);
             _fade.sprite = null;                       // a plain rectangle, not a rounded one
             _fade.type = Image.Type.Simple;
 
-            // Sorted above the fade, so the card sits on top of the black.
-            _cardCanvas = VrUi.CreateScreenCanvas("Card", transform, _camera, sortingOrder: 101);
+            if (ExperienceRig.IsHeadset)
+            {
+                // No screen in a headset, and the Start button has to be something a hand
+                // or a ray can actually press, which a camera overlay is not. So the card
+                // is an object held in front of the face, about 50 degrees wide, close
+                // enough to reach out and poke. It eases after the head only once you
+                // look well away from it, so you can read without it chasing your eyes.
+                _cardCanvas = VrUi.CreateHeadCanvas("Card", transform, CardPixels, CardWidthHeadset,
+                    distance: CardDistanceHeadset, followSeconds: 0.5f, deadzoneDegrees: 14f);
+                _cardCanvas.sortingOrder = 101;
+            }
+            else
+            {
+                // Sorted above the fade, so the card sits on top of the black.
+                _cardCanvas = VrUi.CreateScreenCanvas("Card", transform, _camera, sortingOrder: 101);
+            }
 
             var card = VrUi.Card(_cardCanvas.transform, "Card", Layout.Center(CardPixels.x, CardPixels.y), 44f);
             var face = card.transform;

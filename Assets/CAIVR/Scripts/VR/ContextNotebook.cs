@@ -27,6 +27,9 @@ namespace CAIVR.VR
         [SerializeField] XRGrabInteractable grab;
         [SerializeField] TextMeshProUGUI pageText;
 
+        [Tooltip("The small line at the foot of the page that says how to pick it up.")]
+        [SerializeField] TextMeshProUGUI hint;
+
         [Tooltip("If it falls this far below where it started, put it back on the table.")]
         [SerializeField] float respawnBelowMeters = 1f;
 
@@ -57,6 +60,17 @@ namespace CAIVR.VR
 
             _homePosition = transform.position;
             _homeRotation = transform.rotation;
+
+            // On a flat screen there is no hand to pick it up, so physics could only
+            // knock it off the table: it is frozen, and clicking it brings it up to
+            // read. In a headset it is a real object that hands carry and drop.
+            if (ExperienceRig.IsHeadset)
+            {
+                _body.isKinematic = false;
+                _body.useGravity = true;
+            }
+
+            if (hint != null) hint.text = ExperienceRig.IsHeadset ? "Pick up to read" : "Click to read";
         }
 
         void OnEnable()
@@ -123,6 +137,8 @@ namespace CAIVR.VR
         /// </summary>
         void HandleReading()
         {
+            if (ExperienceRig.IsHeadset) return;      // hands do this in a headset
+
             var mouse = Mouse.current;
             var keyboard = Keyboard.current;
 
@@ -183,8 +199,13 @@ namespace CAIVR.VR
 
         public void ResetToHome()
         {
-            _body.linearVelocity = Vector3.zero;
-            _body.angularVelocity = Vector3.zero;
+            // A frozen body has no velocity to clear, and says so in the console if asked.
+            if (!_body.isKinematic)
+            {
+                _body.linearVelocity = Vector3.zero;
+                _body.angularVelocity = Vector3.zero;
+            }
+
             transform.SetPositionAndRotation(_homePosition, _homeRotation);
             _releasedAt = -1f;
         }

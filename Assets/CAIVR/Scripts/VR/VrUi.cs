@@ -173,6 +173,25 @@ namespace CAIVR.VR
             return canvas;
         }
 
+        /// <summary>
+        /// The headset version of a screen canvas. A headset has no screen to lay UI
+        /// over, so this is a world canvas held in front of the viewer's face by a
+        /// <see cref="HeadLockedAnchor"/>, which keeps it level, eases it after the
+        /// head, and pulls it clear of walls. Authored in pixels like any world canvas;
+        /// <paramref name="widthMeters"/> is how wide it is at <paramref name="distance"/>.
+        /// </summary>
+        public static Canvas CreateHeadCanvas(string name, Transform parent, Vector2 pixelSize, float widthMeters,
+                                              float distance, float followSeconds, float deadzoneDegrees)
+        {
+            var anchor = new GameObject(name + " Anchor", typeof(HeadLockedAnchor));
+            anchor.transform.SetParent(parent, false);
+            anchor.GetComponent<HeadLockedAnchor>().Configure(distance, followSeconds, deadzoneDegrees);
+
+            var canvas = CreateWorldCanvas(name, anchor.transform, pixelSize, widthMeters);
+            canvas.sortingOrder = 50;
+            return canvas;
+        }
+
         public static void EnsureEventCamera(Canvas canvas)
         {
             if (canvas != null && canvas.worldCamera == null) canvas.worldCamera = Camera.main;

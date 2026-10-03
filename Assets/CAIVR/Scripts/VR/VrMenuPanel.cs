@@ -63,6 +63,8 @@ namespace CAIVR.VR
 
         public void Show()
         {
+            if (ExperienceRig.IsHeadset) BringWithinReach();
+
             _canvas.gameObject.SetActive(true);
             StartMonitor();
             Refresh();
@@ -74,6 +76,28 @@ namespace CAIVR.VR
         {
             StopMonitor();
             _canvas.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// On a screen the menu hangs a metre away, which suits a mouse. With hands it
+        /// has to be somewhere an arm can reach to poke, so in a headset it is brought
+        /// in front of wherever the student's head actually is, at the same apparent
+        /// size, with the whole card still in view.
+        /// </summary>
+        void BringWithinReach()
+        {
+            var rig = ExperienceRig.Instance;
+            var camera = Camera.main;
+            if (rig == null || camera == null) return;
+
+            const float reach = 0.7f;
+            const float screenDistance = 1.05f;      // where the scene builder hangs it for a mouse
+
+            var forward = rig.SeatForward;
+            var position = camera.transform.position + forward * reach + Vector3.down * 0.14f;
+
+            transform.SetPositionAndRotation(position, Quaternion.LookRotation(forward) * Quaternion.Euler(8f, 0f, 0f));
+            transform.localScale = Vector3.one * (reach / screenDistance);
         }
 
         void Update()

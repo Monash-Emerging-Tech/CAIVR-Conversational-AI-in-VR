@@ -44,6 +44,11 @@ namespace CAIVR.VR
         [Tooltip("Pixels up from the bottom edge, at 1080p.")]
         [SerializeField] float bottomMargin = 64f;
 
+        [Tooltip("The same in a headset, where the 'screen' is a virtual one hung in front of the face. Higher, so the line is not down at the table.")]
+        [SerializeField] float headsetBottomMargin = 170f;
+
+        bool _headset;
+
         [Header("Timing")]
         [Tooltip("How long a line lingers after the professor stops, so the last words can be finished.")]
         [SerializeField] float lingerSeconds = 1.1f;
@@ -185,7 +190,21 @@ namespace CAIVR.VR
 
         void Build()
         {
-            _canvas = VrUi.CreateScreenCanvas("Subtitles", transform, Camera.main, sortingOrder: 50);
+            _headset = ExperienceRig.IsHeadset;
+
+            if (_headset)
+            {
+                // A virtual screen hung in front of the face, about 85 degrees wide at
+                // 1.6 m, with the captions along its lower edge. Sized so the type
+                // reads as roughly 1.5 degrees tall, which is comfortable in a headset.
+                _canvas = VrUi.CreateHeadCanvas("Subtitles", transform, new Vector2(1920f, 1080f), 2.98f,
+                    distance: 1.6f, followSeconds: 0.22f, deadzoneDegrees: 0f);
+            }
+            else
+            {
+                _canvas = VrUi.CreateScreenCanvas("Subtitles", transform, Camera.main, sortingOrder: 50);
+            }
+
             var root = _canvas.transform;
 
             BuildCaption(root);
@@ -194,14 +213,16 @@ namespace CAIVR.VR
 
         void BuildCaption(Transform root)
         {
-            var box = VrUi.Surface(root, "Captions", Layout.BottomCenter(maxWidth, 60, bottomMargin),
+            var margin = _headset ? headsetBottomMargin : bottomMargin;
+
+            var box = VrUi.Surface(root, "Captions", Layout.BottomCenter(maxWidth, 60, margin),
                 Backdrop, 11f);
 
             _box = box.rectTransform;
             _box.anchorMin = _box.anchorMax = new Vector2(0.5f, 0f);
             _box.pivot = new Vector2(0.5f, 0f);          // pinned at the bottom, so it grows upward
             _box.sizeDelta = new Vector2(maxWidth, 60f);
-            _box.anchoredPosition = new Vector2(0f, bottomMargin);
+            _box.anchoredPosition = new Vector2(0f, margin);
 
             _captionGroup = box.gameObject.AddComponent<CanvasGroup>();
             _captionGroup.alpha = 0f;
@@ -239,14 +260,17 @@ namespace CAIVR.VR
         void BuildNotice(Transform root)
         {
             // Small, bottom left, and only ever present when something is actually wrong.
-            var group = VrUi.Group(root, "Notice", Layout.BottomLeft(48, 40, 900, 40));
+            // In a headset the far corner of the view is out of reach of the eyes, so
+            // it sits centred just below the captions instead.
+            var layout = _headset ? Layout.BottomCenter(900, 40, headsetBottomMargin - 70) : Layout.BottomLeft(48, 40, 900, 40);
+            var group = VrUi.Group(root, "Notice", layout);
             _noticeGroup = group.gameObject.AddComponent<CanvasGroup>();
             _noticeGroup.alpha = 0f;
             _noticeGroup.blocksRaycasts = false;
             _noticeGroup.interactable = false;
 
             _notice = VrUi.Text(group, "Text", Layout.Fill(), "", 22, MonashTheme.Warning,
-                TextAlignmentOptions.MidlineLeft);
+                _headset ? TextAlignmentOptions.Midline : TextAlignmentOptions.MidlineLeft);
         }
     }
 }

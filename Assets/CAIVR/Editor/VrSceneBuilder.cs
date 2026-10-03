@@ -22,18 +22,27 @@ namespace CAIVR.EditorTools
     /// committed by hand for the same reason as the others: rerun the menu item
     /// whenever the room changes and everything is placed again.
     ///
-    /// Two variants:
-    ///   - the default has NO rig. A plain camera sits at seated eye height, the
-    ///     mouse looks around, and every piece of UI is an object in the room.
-    ///   - an optional variant adds the template's own XR rig, event system and
-    ///     hand-tracking permission prefab, kept so the headset path is not lost.
+    /// One scene, two ways in. It carries a plain camera with mouse look for the
+    /// desktop AND the XR rig with hand tracking for a headset; at runtime
+    /// <see cref="ExperienceRig"/> switches on whichever applies. On a PC with no
+    /// headset there is no rig in play, with one the same scene just works, and
+    /// there are no separate scenes to keep in step.
+    ///
+    /// The XR rig is the template's own, trimmed for sitting at a table: no
+    /// walking, no teleporting, no gravity, no locomotion tutorial tooltips.
     /// </summary>
     public static class VrSceneBuilder
     {
         const string SourceScene = "Assets/Scenes/Consultation Scene.unity";
         const string TemplateScene = "Assets/Scenes/SampleScene.unity";
         const string OutputScene = "Assets/CAIVR/Scenes/ConsultationVR.unity";
-        const string OutputSceneRig = "Assets/CAIVR/Scenes/ConsultationVR_Rig.unity";
+
+        // An earlier version generated a second scene for the rig. It is gone now that
+        // the one scene carries both, and is removed if an old checkout still has it.
+        const string RetiredRigScene = "Assets/CAIVR/Scenes/ConsultationVR_Rig.unity";
+
+        const string SimulatorPrefab =
+            "Assets/Samples/XR Interaction Toolkit/3.4.1/XR Interaction Simulator/XR Interaction Simulator.prefab";
 
         const string MaterialFolder = "Assets/CAIVR/Materials";
         const string ResourcesMaterialFolder = "Assets/CAIVR/Resources/CAIVR/Materials";
@@ -49,8 +58,18 @@ namespace CAIVR.EditorTools
         // z -1.45..2.1, the glass door is on the west wall at z -0.69, and the
         // table's top is at y 0.74. The student sits on the door side facing east.
         static readonly Vector3 DefaultStudent = new Vector3(1.30f, 0f, -0.66f);
-        static readonly Vector3 DefaultProfessor = new Vector3(3.15f, 0f, -0.47f);
-        static readonly Vector3 DefaultNotebook = new Vector3(1.85f, 0.76f, -0.55f);
+
+        // The professor's chair is the one at the far end of the table that is closest to
+        // the student's line of sight. This is on the floor under her hips, pulled back
+        // from the table's end so she sits clear of it rather than through it.
+        static readonly Vector3 DefaultProfessor = new Vector3(3.12f, 0f, -0.92f);
+        const float ProfessorSeatTop = 0.42f;
+
+        // On the student's left side of the table, not straight ahead. The menu hangs
+        // in front of the student and its lowest button, Start, is only a hand's width
+        // above the table. A notebook underneath it counts as a grab target, and while
+        // a hand is near a grab target it cannot poke, so Start would not press.
+        static readonly Vector3 DefaultNotebook = new Vector3(1.75f, 0.76f, -0.22f);
         const float SeatedEyeHeight = 1.2f;
 
         // Resolved per build. A room scene may contain empty objects with these names to
@@ -118,12 +137,9 @@ namespace CAIVR.EditorTools
         }
 
         [MenuItem("CAIVR/VR/Create VR Consultation Scene", priority = 100)]
-        public static void Create() => Build(withRig: false);
+        public static void Create() => Build();
 
-        [MenuItem("CAIVR/VR/Create VR Consultation Scene (with template rig)", priority = 101)]
-        public static void CreateWithRig() => Build(withRig: true);
-
-        static void Build(bool withRig)
+        static void Build()
         {
             var source = ResolveSourceScene();
             if (!File.Exists(source))
@@ -132,7 +148,7 @@ namespace CAIVR.EditorTools
                 return;
             }
 
-            if (withRig && AssetDatabase.LoadAssetAtPath<GameObject>(RigPrefab) == null)
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(RigPrefab) == null)
             {
                 Debug.LogError($"[CAIVR] Template rig prefab missing at {RigPrefab}.");
                 return;
@@ -140,7 +156,8 @@ namespace CAIVR.EditorTools
 
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
-            var output = withRig ? OutputSceneRig : OutputScene;
+            var output = OutputScene;
+            RetireRigScene();
 
             Directory.CreateDirectory(Path.GetDirectoryName(output));
             Directory.CreateDirectory(MaterialFolder);
@@ -156,25 +173,40 @@ namespace CAIVR.EditorTools
             RemoveStandaloneCamera(scene);
             ResolveSpots();
 
-            // The room has no colliders as modelled. Without them anything with physics
-            // (the notebook) falls through the table, so every variant needs them.
-            AddEnvironmentColliders();
+            // The room has no colliders as modelled. Without them the notebook falls
+            // through the table, and the head-locked UI cannot tell where the walls are.
+            var environment = AddEnvironmentColliders();
 
-            if (withRig) AddTemplateRig(scene);
-            else AddSeatedCamera();
+            AddRigs(scene, environment);
 
             var conversation = AddConversation();
             AddProfessor(conversation.voice);
             AddSubtitles(conversation.runner, conversation.speech);
             var menu = AddMenu();
             AddIntro(conversation.runner, conversation.voice, menu);
-            AddNotebook(conversation.runner, physical: withRig);
+            AddNotebook(conversation.runner);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             RegisterInBuildSettings(output);
 
-            Debug.Log($"[CAIVR] Consultation scene created at {output} ({(withRig ? "with template rig" : "no rig")}).");
+            Debug.Log($"[CAIVR] Consultation scene created at {output}.");
+        }
+
+        /// <summary>Removes the old generated rig scene, and its build settings entry, if present.</summary>
+        static void RetireRigScene()
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(RetiredRigScene) == null) return;
+
+            var kept = new System.Collections.Generic.List<EditorBuildSettingsScene>();
+            foreach (var s in EditorBuildSettings.scenes)
+            {
+                if (s.path != RetiredRigScene) kept.Add(s);
+            }
+            EditorBuildSettings.scenes = kept.ToArray();
+
+            AssetDatabase.DeleteAsset(RetiredRigScene);
+            Debug.Log("[CAIVR] Removed the old ConsultationVR_Rig scene; ConsultationVR now carries the headset rig itself.");
         }
 
         // --- shared assets ---------------------------------------------------
@@ -209,12 +241,50 @@ namespace CAIVR.EditorTools
             }
         }
 
-        static void AddSeatedCamera()
+        /// <summary>
+        /// Both ways in, plus what lets the runtime choose between them: a desktop
+        /// camera, the headset rig, an event system that can serve either, and the
+        /// <see cref="ExperienceRig"/> that switches one on.
+        /// </summary>
+        static void AddRigs(Scene target, GameObject environment)
+        {
+            // Where the student's eyes are, and which way they face. Both rigs are
+            // brought to this.
+            var seat = new GameObject("Student Seat");
+            seat.transform.SetPositionAndRotation(
+                new Vector3(StudentSpot.x, SeatedEyeHeight, StudentSpot.z), Quaternion.LookRotation(Forward));
+
+            var desktop = AddDesktopCamera();
+            var headset = AddHeadsetRig();
+            var events = AddEventSystem(target);
+            var simulator = AddSimulator();
+
+            // Quest asks for hand-tracking permission at runtime. Without this prefab
+            // the hands silently never appear on a standalone build.
+            var permissions = AssetDatabase.LoadAssetAtPath<GameObject>(PermissionsPrefab);
+            if (permissions != null) PrefabUtility.InstantiatePrefab(permissions);
+
+            new GameObject("XR Interaction Manager", typeof(XRInteractionManager));
+
+            var experience = new GameObject("Experience", typeof(ExperienceRig));
+            var rig = experience.GetComponent<ExperienceRig>();
+
+            SetRef(rig, "desktopRig", desktop);
+            SetRef(rig, "headsetRig", headset);
+            SetRef(rig, "desktopInput", events.GetComponent<InputSystemUIInputModule>());
+            SetRef(rig, "headsetInput", events.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.XRUIInputModule>());
+            SetRef(rig, "seat", seat.transform);
+            SetRef(rig, "obstacles", environment != null ? environment.transform : null);
+            SetRef(rig, "simulator", simulator);
+            SetRef(rig, "origin", headset.GetComponent<Unity.XR.CoreUtils.XROrigin>());
+        }
+
+        static GameObject AddDesktopCamera()
         {
             var go = new GameObject("Student Camera", typeof(Camera), typeof(AudioListener), typeof(SeatedViewpoint));
             go.tag = "MainCamera";
 
-            // Facing east, toward the professor and the menu in front of the student.
+            // Facing the professor and the menu in front of the student.
             go.transform.SetPositionAndRotation(
                 new Vector3(StudentSpot.x, SeatedEyeHeight, StudentSpot.z), Quaternion.LookRotation(Forward));
 
@@ -222,21 +292,72 @@ namespace CAIVR.EditorTools
             camera.fieldOfView = 70f;
             camera.nearClipPlane = 0.03f;      // close enough to read the notebook held up to the face
 
-            // A normal event system. Mouse clicks reach the in-room UI through it.
-            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+            return go;
         }
 
-        static void AddTemplateRig(Scene target)
+        /// <summary>
+        /// The template's own rig, with hand tracking, hand meshes, poke and pinch
+        /// interactors, and the switch between hands and controllers. Trimmed for
+        /// sitting at a table: the student cannot walk, teleport or fall, and the
+        /// tutorial tooltips about those are gone.
+        /// </summary>
+        static GameObject AddHeadsetRig()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(RigPrefab);
             var rig = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            rig.name = "XR Origin Hands (template rig)";
-            rig.transform.SetPositionAndRotation(StudentSpot, Quaternion.LookRotation(Forward));
-            rig.AddComponent<RigFallRecovery>();
 
-            // XR rays and pokes only reach UI through an event system carrying
-            // XRUIInputModule wired to the XR input actions. The template scene has a
-            // correctly wired one, so copy that rather than rebuild it.
+            // Unpacked so the pieces below can be removed from this scene's copy.
+            PrefabUtility.UnpackPrefabInstance(rig, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+
+            rig.name = "XR Rig (headset)";
+            rig.transform.SetPositionAndRotation(
+                new Vector3(StudentSpot.x, 0f, StudentSpot.z), Quaternion.LookRotation(Forward));
+
+            // No walking, turning, jumping or gravity.
+            var locomotion = rig.transform.Find("Locomotion");
+            if (locomotion != null) locomotion.gameObject.SetActive(false);
+
+            var body = rig.GetComponent<CharacterController>();
+            if (body != null) Object.DestroyImmediate(body);
+
+            foreach (var manager in rig.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                // The controller's thumbsticks only drive locomotion and teleport.
+                if (manager != null && manager.GetType().Name == "ControllerInputActionManager") manager.enabled = false;
+            }
+
+            // Things that do not belong in a seated conversation:
+            //   - the aiming ray used for teleporting, and the "how to move" tooltips
+            //   - eye gaze interaction, which only does anything on headsets with eye
+            //     tracking, and logs a warning on every run on ones without
+            //   - the XR Hands sample's debug visualiser, which draws a gizmo on every
+            //     joint over the real hand meshes
+            foreach (var t in rig.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null) continue;
+
+                if (t.name == "Teleport Interactor" || t.name.StartsWith("Affordance Callouts")
+                    || t.name == "Gaze Interactor" || t.name == "Gaze Stabilized"
+                    || t.name == "Hand Visualizer")
+                    t.gameObject.SetActive(false);
+            }
+
+            // Off in the saved scene. On a flat screen it stays off, so there is no rig
+            // in play; in a headset ExperienceRig switches it on.
+            rig.SetActive(false);
+            return rig;
+        }
+
+        /// <summary>
+        /// One event system that can serve both: the standard module for the mouse, and
+        /// the XR module (copied from the template, where its input actions are already
+        /// wired) for rays and pokes. <see cref="ExperienceRig"/> switches on the one
+        /// that applies.
+        /// </summary>
+        static GameObject AddEventSystem(Scene target)
+        {
+            GameObject events = null;
+
             var template = EditorSceneManager.OpenScene(TemplateScene, OpenSceneMode.Additive);
             try
             {
@@ -244,9 +365,9 @@ namespace CAIVR.EditorTools
                 {
                     if (root.name != "EventSystem") continue;
 
-                    var copy = Object.Instantiate(root);
-                    copy.name = "EventSystem";
-                    SceneManager.MoveGameObjectToScene(copy, target);
+                    events = Object.Instantiate(root);
+                    events.name = "EventSystem";
+                    SceneManager.MoveGameObjectToScene(events, target);
                     break;
                 }
             }
@@ -255,23 +376,53 @@ namespace CAIVR.EditorTools
                 EditorSceneManager.CloseScene(template, true);
             }
 
-            // Quest asks for hand-tracking permission at runtime. Without this prefab
-            // the hands silently never appear on a standalone build.
-            var permissions = AssetDatabase.LoadAssetAtPath<GameObject>(PermissionsPrefab);
-            if (permissions != null) PrefabUtility.InstantiatePrefab(permissions);
+            if (events == null)
+            {
+                Debug.LogError("[CAIVR] The template scene has no EventSystem to copy. Hands will not be able to press UI.");
+                events = new GameObject("EventSystem", typeof(EventSystem));
+            }
 
-            new GameObject("XR Interaction Manager", typeof(XRInteractionManager));
+            if (events.GetComponent<InputSystemUIInputModule>() == null)
+                events.AddComponent<InputSystemUIInputModule>();
+
+            // The desktop module starts on; ExperienceRig swaps them if there is a headset.
+            events.GetComponent<InputSystemUIInputModule>().enabled = true;
+            var xr = events.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.XRUIInputModule>();
+            if (xr != null) xr.enabled = false;
+
+            return events;
         }
 
         /// <summary>
-        /// The room as modelled has no colliders at all, and the rig has gravity,
-        /// so without these the student falls through the floor on load. Only needed
-        /// when a rig is present, and added to this generated copy only.
+        /// Lets the hands, rays and grabbing be tried at a desk. Tagged EditorOnly, so it
+        /// is not in a build at all, and the runtime only switches it on in the Editor
+        /// with no headset connected and the testing option ticked.
         /// </summary>
-        static void AddEnvironmentColliders()
+        static GameObject AddSimulator()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SimulatorPrefab);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[CAIVR] XR Interaction Simulator sample is not imported, so a headset cannot be " +
+                                 "simulated in the Editor. Import it from Package Manager > XR Interaction Toolkit > Samples.");
+                return null;
+            }
+
+            var simulator = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            simulator.tag = "EditorOnly";
+            simulator.SetActive(false);
+            return simulator;
+        }
+
+        /// <summary>
+        /// The room as modelled has no colliders at all. Without these the notebook
+        /// falls through the table and head-locked UI cannot tell where the walls are.
+        /// Added to this generated copy only, never to the source room.
+        /// </summary>
+        static GameObject AddEnvironmentColliders()
         {
             var environment = GameObject.Find("Consultation_Env");
-            if (environment == null) return;
+            if (environment == null) return null;
 
             var added = 0;
             foreach (var filter in environment.GetComponentsInChildren<MeshFilter>(true))
@@ -283,6 +434,7 @@ namespace CAIVR.EditorTools
             }
 
             Debug.Log($"[CAIVR] Added {added} mesh colliders to the environment.");
+            return environment;
         }
 
         // --- conversation ----------------------------------------------------
@@ -306,40 +458,10 @@ namespace CAIVR.EditorTools
 
         static void AddProfessor(VoiceLinePlayer voice)
         {
-            var skin = Mat("Professor_Skin", new Color(0.85f, 0.68f, 0.56f), 0.25f);
-            var cloth = Mat("Professor_Cloth", Hex("006DAE"), 0.1f);
-            var dark = Mat("Professor_Dark", new Color(0.06f, 0.05f, 0.05f), 0.1f);
-
-            var root = new GameObject("Professor (placeholder)");
-            // Facing west (-X), toward the student.
-            root.transform.SetPositionAndRotation(ProfessorSpot, Quaternion.LookRotation(-Forward));
-
-            var torso = Primitive(PrimitiveType.Capsule, "Torso", root.transform, cloth);
-            torso.transform.localPosition = new Vector3(0f, 0.82f, 0f);
-            torso.transform.localScale = new Vector3(0.40f, 0.34f, 0.28f);
-
-            var head = Primitive(PrimitiveType.Sphere, "Head", root.transform, skin);
-            head.transform.localPosition = new Vector3(0f, 1.28f, 0f);
-            head.transform.localScale = Vector3.one * 0.22f;
-
-            foreach (var side in new[] { -1f, 1f })
-            {
-                var eye = Primitive(PrimitiveType.Sphere, side < 0 ? "Eye_L" : "Eye_R", head.transform, dark);
-                eye.transform.localPosition = new Vector3(0.20f * side, 0.12f, 0.43f);
-                eye.transform.localScale = Vector3.one * 0.11f;
-            }
-
-            var mouth = Primitive(PrimitiveType.Cube, "Mouth", head.transform, dark);
-            mouth.transform.localPosition = new Vector3(0f, -0.22f, 0.46f);
-            mouth.transform.localScale = new Vector3(0.36f, 0.14f, 0.06f);
-
-            var avatar = root.AddComponent<ProfessorAvatar>();
-            SetRef(avatar, "voice", voice);
-            SetRef(avatar, "head", head.transform);
-
-            var lipSync = root.AddComponent<LipSyncDriver>();
-            SetRef(lipSync, "voice", voice);
-            SetRef(lipSync, "mouth", mouth.transform);
+            // Dr Ellery, the Character Creator model, sat in the chair and facing the student.
+            // See ProfessorBuilder for how she is posed and why her colours are flat for now.
+            var facing = StudentSpot - ProfessorSpot;
+            ProfessorBuilder.Build(ProfessorSpot, ProfessorSeatTop, facing, voice);
         }
 
         // --- UI --------------------------------------------------------------
@@ -382,7 +504,7 @@ namespace CAIVR.EditorTools
 
         // --- notebook --------------------------------------------------------
 
-        static void AddNotebook(ConversationRunner runner, bool physical)
+        static void AddNotebook(ConversationRunner runner)
         {
             var cover = Mat("Notebook_Cover", Hex("006DAE"), 0.2f);
 
@@ -395,18 +517,24 @@ namespace CAIVR.EditorTools
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-            // With no hands there is nothing to pick it up, so physics could only make
-            // it fall off the table. Frozen in place; click to read still works.
-            body.isKinematic = !physical;
-            body.useGravity = physical;
+            // Saved frozen: on a flat screen there is no hand to pick it up, so physics
+            // could only make it fall off the table, and click-to-read still works. In a
+            // headset ContextNotebook makes it a real object at runtime.
+            body.isKinematic = true;
+            body.useGravity = false;
 
             // Collider on the parent so the visual can be scaled freely.
             var box = root.AddComponent<BoxCollider>();
             box.size = new Vector3(0.20f, 0.025f, 0.27f);
 
-            // Kept on the prop so hands can pick it up when a rig is present.
+            // Hands pick it up in a headset. It stays in the hand however it was
+            // grabbed, so it can be turned to read, and it cannot be thrown across the
+            // room: it should be set down, not launched.
             var grab = root.AddComponent<XRGrabInteractable>();
             grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
+            grab.useDynamicAttach = true;
+            grab.throwOnDetach = false;
+            grab.trackScale = false;
 
             var visual = Primitive(PrimitiveType.Cube, "Cover", root.transform, cover);
             visual.transform.localScale = new Vector3(0.20f, 0.022f, 0.27f);
@@ -426,13 +554,14 @@ namespace CAIVR.EditorTools
                 "Your situation appears here when the consultation starts.", 30, MonashTheme.BlueDeep,
                 TextAlignmentOptions.TopLeft, autoSize: true);
 
-            VrUi.Text(page, "Footer", Layout.BottomStretch(24, 16, 24, 30), "Click to read", 22,
+            var hint = VrUi.Text(page, "Footer", Layout.BottomStretch(24, 16, 24, 30), "Click to read", 22,
                 new Color(0.42f, 0.48f, 0.55f), TextAlignmentOptions.MidlineLeft);
 
             var notebook = root.AddComponent<ContextNotebook>();
             SetRef(notebook, "runner", runner);
             SetRef(notebook, "grab", grab);
             SetRef(notebook, "pageText", text);
+            SetRef(notebook, "hint", hint);
         }
 
         // --- helpers ---------------------------------------------------------

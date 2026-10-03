@@ -43,6 +43,10 @@ namespace CAIVR.VR
             // The camera is not guaranteed to exist the instant this runs.
             while (Camera.main == null) yield return null;
 
+            // In a headset, wait until the student is sat in their chair. Showing the
+            // menu before that would put it wherever their head happened to be.
+            yield return ExperienceRig.WaitUntilReady();
+
             overlay.Attach(Camera.main);
 
             if (menu != null)
