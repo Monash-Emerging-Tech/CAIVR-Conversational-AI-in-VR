@@ -119,6 +119,7 @@ namespace CAIVR.VR
         Transform _spineLow, _spineHigh;
         Quaternion _spineLowRest, _spineHighRest;
         ArmRig _right, _left;
+        ProfessorGaze _gaze;
 
         Gesture _gesture;
         float _gestureTime, _gestureLength;
@@ -150,6 +151,8 @@ namespace CAIVR.VR
             _spineHigh = bones.Get("Spine02");
             if (_spineLow != null) _spineLowRest = _spineLow.localRotation;
             if (_spineHigh != null) _spineHighRest = _spineHigh.localRotation;
+
+            _gaze = GetComponent<ProfessorGaze>();
 
             _right = ArmRig.Create(bones, 'R', transform);
             _left = ArmRig.Create(bones, 'L', transform);
@@ -215,7 +218,7 @@ namespace CAIVR.VR
 
             if (_inhaling)
             {
-                _inhale += dt / 0.5f;
+                _inhale += dt / 0.8f;
                 if (_inhale >= 1f) { _inhale = 1f; _inhaling = false; }
             }
             else _inhale = Mathf.MoveTowards(_inhale, 0f, dt / 1.1f);
@@ -282,11 +285,13 @@ namespace CAIVR.VR
             var forward = transform.forward;
 
             var breath = Breath(t);
-            var rise = breath * breathDegrees + _inhale * 2.2f;      // the chest lifts and tips back as it fills
+            var rise = breath * breathDegrees + _inhale * 1.2f;      // the chest lifts and tips back as it fills
 
             var swayPitch = Sway(t * 0.11f, 2.1f) * swayDegrees * 0.6f;
             var swayRoll = Sway(t * 0.09f, 5.3f) * swayDegrees;
-            var swayYaw = Sway(t * 0.07f, 8.7f) * swayDegrees * 0.8f;
+            // When she turns her head the shoulders turn a little with it, a fifth of the way. A head that turns on a
+            // fixed torso is the most mechanical thing a seated figure can do.
+            var swayYaw = Sway(t * 0.07f, 8.7f) * swayDegrees * 0.8f + (_gaze != null ? _gaze.HeadYaw * 0.2f : 0f);
 
             _spineLow.localRotation = _spineLowRest;
             _spineLow.rotation = Quaternion.AngleAxis(swayRoll, forward)

@@ -19,6 +19,12 @@ namespace CAIVR.VR
     }
 
     /// <summary>
+    /// Marks a canvas whose contents are drawn over everything else in the room, however close a wall or
+    /// the table is. <see cref="VrUi"/> gives anything built under it the "on top" material and font.
+    /// </summary>
+    public sealed class UiOnTop : MonoBehaviour { }
+
+    /// <summary>
     /// Where a UI element sits inside its parent, described the way a designer
     /// would: pixels in from an edge. Saves every panel from anchor arithmetic.
     /// </summary>
@@ -98,10 +104,36 @@ namespace CAIVR.VR
     public static class VrUi
     {
         const string FontResource = "CAIVR/Fonts/Inter SDF";
+        const string OverlayFontResource = "CAIVR/Fonts/Inter SDF Overlay";
         const string BezelResource = "CAIVR/Materials/UiBezel";
+        const string OnTopMaterialResource = "CAIVR/Materials/UiOnTop";
 
         static TMP_FontAsset _font;
         static bool _fontLooked;
+        static TMP_FontAsset _overlayFont;
+        static Material _onTopMaterial;
+
+        /// <summary>The same face as <see cref="Font"/>, with a shader that ignores depth, so it is drawn over the room.</summary>
+        static TMP_FontAsset OverlayFont
+        {
+            get { LookForOnTopAssets(); return _overlayFont; }
+        }
+
+        static Material OnTopMaterial
+        {
+            get { LookForOnTopAssets(); return _onTopMaterial; }
+        }
+
+        static void LookForOnTopAssets()
+        {
+            if (_overlayFont != null && _onTopMaterial != null) return;
+
+            _overlayFont = Resources.Load<TMP_FontAsset>(OverlayFontResource);
+            _onTopMaterial = Resources.Load<Material>(OnTopMaterialResource);
+        }
+
+        /// <summary>Is this element under a canvas that is meant to be drawn over the room?</summary>
+        public static bool IsOnTop(Transform element) => element != null && element.GetComponentInParent<UiOnTop>(true) != null;
 
         /// <summary>Inter if it has been set up, otherwise TextMeshPro's default.</summary>
         public static TMP_FontAsset Font
@@ -119,33 +151,19 @@ namespace CAIVR.VR
 
         // --- canvases --------------------------------------------------------
 
-        // XR Interaction Toolkit's tracked-device raycaster registers itself in a static table when it
-        // wakes and removes itself when it is destroyed, but its OnDisable looks itself up again. When Play
-        // mode ends the editor can destroy it first, and the lookup throws a KeyNotFoundException for every
-        // canvas (the briefing page, the fade). Switching the raycasters off a moment earlier, while they are
-        // still registered, lets that tidy-up run in the right order.
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ReleaseRaycastersOnQuit()
-        {
-            Application.quitting -= ReleaseRaycasters;
-            Application.quitting += ReleaseRaycasters;
-        }
-
-        static void ReleaseRaycasters()
-        {
-            foreach (var raycaster in Object.FindObjectsByType<TrackedDeviceGraphicRaycaster>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
-                raycaster.enabled = false;
-        }
-
         /// <summary>
         /// Creates a world-space canvas, <paramref name="widthMeters"/> wide. At
         /// 1000 pixels per metre one pixel is one millimetre, so a 56 px font is a
         /// 5.6 cm letter, which makes legibility easy to reason about.
         /// </summary>
-        public static Canvas CreateWorldCanvas(string name, Transform parent, Vector2 pixelSize, float widthMeters)
+        /// <param name="onTop">Draw everything on it over the room's geometry, so a wall or the table can never hide any of it.</param>
+        public static Canvas CreateWorldCanvas(string name, Transform parent, Vector2 pixelSize, float widthMeters,
+                                               bool onTop = false)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster));
             go.transform.SetParent(parent, false);
+
+            if (onTop) go.AddComponent<UiOnTop>();
 
             var canvas = go.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
@@ -156,7 +174,7 @@ namespace CAIVR.VR
 
             // The standard GraphicRaycaster serves the mouse. The tracked-device
             // one serves XR rays and pokes, and sits idle until a rig is added.
-            go.AddComponent<TrackedDeviceGraphicRaycaster>();
+            go.AddComponent<SafeTrackedDeviceRaycaster>();
 
             return canvas;
         }
@@ -198,14 +216,20 @@ namespace CAIVR.VR
         /// head, and pulls it clear of walls. Authored in pixels like any world canvas;
         /// <paramref name="widthMeters"/> is how wide it is at <paramref name="distance"/>.
         /// </summary>
+        /// <param name="referenceDistance">The distance <paramref name="widthMeters"/> is measured at, if not the working distance.</param>
+        /// <param name="lowerDegrees">Held this far below where the viewer looks, like a tablet.</param>
         public static Canvas CreateHeadCanvas(string name, Transform parent, Vector2 pixelSize, float widthMeters,
-                                              float distance, float followSeconds, float deadzoneDegrees)
+                                              float distance, float followSeconds, float deadzoneDegrees,
+                                              float referenceDistance = 0f, float lowerDegrees = 0f)
         {
             var anchor = new GameObject(name + " Anchor", typeof(HeadLockedAnchor));
             anchor.transform.SetParent(parent, false);
-            anchor.GetComponent<HeadLockedAnchor>().Configure(distance, followSeconds, deadzoneDegrees);
+            anchor.GetComponent<HeadLockedAnchor>().Configure(distance, followSeconds, deadzoneDegrees,
+                referenceDistance, lowerDegrees);
 
-            var canvas = CreateWorldCanvas(name, anchor.transform, pixelSize, widthMeters);
+            // Head-held UI is always drawn over the room: it is for reading and pressing, and the room must
+            // never hide a corner of it. (It also keeps in front of walls, so depth cues stay honest.)
+            var canvas = CreateWorldCanvas(name, anchor.transform, pixelSize, widthMeters, onTop: true);
             canvas.sortingOrder = 50;
             return canvas;
         }
@@ -237,6 +261,7 @@ namespace CAIVR.VR
             layout.ApplyTo(go.GetComponent<RectTransform>());
 
             var image = go.GetComponent<Image>();
+            if (IsOnTop(parent) && OnTopMaterial != null) image.material = OnTopMaterial;
             image.sprite = UiSprites.Rounded;
             image.type = Image.Type.Sliced;
             image.pixelsPerUnitMultiplier = UiSprites.MasterRadius / Mathf.Max(1f, radius);
@@ -285,7 +310,8 @@ namespace CAIVR.VR
             layout.ApplyTo(go.GetComponent<RectTransform>());
 
             var label = go.GetComponent<TextMeshProUGUI>();
-            if (Font != null) label.font = Font;
+            if (IsOnTop(parent) && OverlayFont != null) label.font = OverlayFont;
+            else if (Font != null) label.font = Font;
 
             label.text = text;
             label.fontSize = size;

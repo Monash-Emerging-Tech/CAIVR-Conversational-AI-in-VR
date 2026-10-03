@@ -80,7 +80,7 @@ namespace CAIVR.VR
         float _tiltSign;
         float _asymmetry;                // her left and right brows are never quite level
 
-        float _nodElapsed = -1f, _nodLength, _nodDepth;
+        float _nodElapsed = -1f, _nodLength, _nodDepth, _nodYaw, _nodRoll;
         int _nodsLeft;
         float _nextNod;
 
@@ -129,7 +129,7 @@ namespace CAIVR.VR
                 TriggerSmile(0.55f, 2.6f, force: true);          // a warm goodbye, held a little
             }
 
-            if (phase == ProfessorPhase.Listening) _nextNod = Time.time + Random.Range(2.5f, 4.5f);
+            if (phase == ProfessorPhase.Listening) _nextNod = Time.time + Random.Range(4f, 8f);
 
             // The first words of the conversation are a greeting, and a greeting has a smile in it.
             if (phase == ProfessorPhase.Speaking && _previousPhase == ProfessorPhase.Waiting)
@@ -143,7 +143,10 @@ namespace CAIVR.VR
         void OnEmphasis()
         {
             _accent = Mathf.Max(_accent, 0.6f + 0.4f * mood.Emphasis);
-            if (Random.value < 0.65f) StartNod(1.6f + 2f * mood.Emphasis, 0.45f, 0);
+
+            // A head that dips on every stressed word is a bobblehead. Most stress goes by on the face alone
+            // (the brows already lift), and when the head does join in it is small.
+            if (Random.value < 0.18f) StartNod(0.9f + 1.4f * mood.Emphasis, Random.Range(0.4f, 0.6f), 0);
         }
 
         void OnPhraseStarted()
@@ -156,7 +159,7 @@ namespace CAIVR.VR
         {
             if (mood.Phase != ProfessorPhase.Speaking) return;
 
-            if (Random.value < 0.3f) StartNod(2.5f, 0.55f, 0);
+            if (Random.value < 0.12f) StartNod(Random.Range(1.8f, 2.8f), Random.Range(0.5f, 0.7f), 0);
 
             // A smile at the end of a sentence, now and then, not through it.
             if (Random.value < 0.22f) TriggerSmile(Random.Range(0.28f, 0.4f), Random.Range(0.3f, 0.8f));
@@ -219,6 +222,11 @@ namespace CAIVR.VR
             _nodLength = seconds;
             _nodDepth = degrees;
             _nodsLeft = extra;
+
+            // No two nods are the same shape. A real one is never a clean dip: the head drifts a degree sideways and
+            // tips a little as it goes.
+            _nodYaw = Random.Range(-0.9f, 0.9f) * Mathf.Clamp01(degrees / 4f);
+            _nodRoll = Random.Range(-0.9f, 0.9f) * Mathf.Clamp01(degrees / 4f);
 
             // A nod is a small social signal, and it comes with a flicker of the brows and a hint of a smile.
             _flash = Mathf.Max(_flash, 0.35f);
@@ -374,11 +382,14 @@ namespace CAIVR.VR
             // Listeners nod. Every so often, a small one, sometimes two.
             if (phase == ProfessorPhase.Listening && _nodElapsed < 0f && Time.time >= _nextNod)
             {
-                StartNod(Random.Range(3f, 5f), 0.6f, Random.value < 0.35f ? 1 : 0);
-                _nextNod = Time.time + Random.Range(3.5f, 8f);
+                StartNod(Random.Range(2.5f, 4.2f), Random.Range(0.5f, 0.75f), Random.value < 0.3f ? 1 : 0);
+
+                // Listeners nod about every fifteen seconds or so, at uneven intervals.
+                _nextNod = Time.time + Random.Range(7f, 17f);
             }
 
             var nod = 0f;
+            var nodShape = 0f;
             if (_nodElapsed >= 0f)
             {
                 _nodElapsed += dt;
@@ -387,6 +398,7 @@ namespace CAIVR.VR
                 // Down quickly, back up more slowly.
                 var shape = u < 0.35f ? Mathf.SmoothStep(0f, 1f, u / 0.35f) : 1f - Mathf.SmoothStep(0f, 1f, (u - 0.35f) / 0.65f);
                 nod = _nodDepth * shape;
+                nodShape = shape;
 
                 if (u >= 1f)
                 {
@@ -395,7 +407,7 @@ namespace CAIVR.VR
                 }
             }
 
-            gaze.AddHeadOffset(nod, 0f, _tilt * _tiltSign + Noise(t * 0.13f, 9.1f) * 0.6f);
+            gaze.AddHeadOffset(nod, _nodYaw * nodShape, _tilt * _tiltSign + _nodRoll * nodShape);
         }
 
         static float Noise(float x, float y) => Mathf.PerlinNoise(x, y);

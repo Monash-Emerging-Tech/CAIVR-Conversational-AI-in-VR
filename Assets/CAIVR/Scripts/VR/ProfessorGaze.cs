@@ -9,6 +9,10 @@ namespace CAIVR.VR
     /// is built the way people actually look at each other:
     ///   - the eyes jump to a new point fast and the head follows a beat later and only
     ///     part of the way, so the eyes lead and the head settles after
+    ///   - the head is held still, then shifts, rather than tracking you continuously. A head
+    ///     that follows its target every frame looks like a servo; a person's rests in a
+    ///     posture and moves in short, smooth, bell-shaped turns (slow, fast, slow), at uneven
+    ///     intervals, and only when there is a reason
     ///   - while she holds eye contact her eyes are never quite still: they drift between
     ///     your eyes and your mouth in tiny steps
     ///   - she glances away now and then, mostly at the start of a thought and while she is
@@ -37,16 +41,15 @@ namespace CAIVR.VR
         [Tooltip("How far, in degrees, her head will turn away from straight ahead to follow you.")]
         [SerializeField] float maxHeadYaw = 55f;
 
-        [Tooltip("The head ignores targets this close to straight ahead. The eyes cover them, as yours do.")]
-        [SerializeField] float headDeadZone = 5f;
-
-        [SerializeField] float headSmoothSeconds = 0.30f;
+        [Tooltip("The head only turns to face you again once you are this many degrees away from where it points. " +
+                 "Until then the eyes cover it, as yours do.")]
+        [SerializeField] float headDeadZone = 8f;
 
         [Tooltip("How much of the turn the neck takes, the rest going to the head. A head that turns on its own looks like it is on a stick.")]
         [SerializeField, Range(0f, 0.9f)] float neckShare = 0.45f;
 
-        [Tooltip("Slow drift of the head in degrees, so she is never perfectly still.")]
-        [SerializeField] float idleSwayDegrees = 1.1f;
+        [Tooltip("The faintest drift of the head in degrees. It is only there so she is never frozen; real posture changes are the shifts.")]
+        [SerializeField] float idleSwayDegrees = 0.3f;
 
         [Header("Eyes")]
         [SerializeField] float eyeYawLimit = 32f;
@@ -82,8 +85,17 @@ namespace CAIVR.VR
         Vector3 _gazePoint, _gazeVelocity;
         bool _gazeStarted;
 
-        float _yaw, _yawVelocity, _pitch, _pitchVelocity;
+        // Where the head is, in degrees from straight ahead (pitch down is positive), and the move it is making.
+        float _yaw, _pitch;
+        float _fromYaw, _fromPitch, _toYaw, _toPitch, _moveStart, _moveSeconds;
+        bool _moving;
+        float _headNotBefore;           // the head waits for the eyes: a new move cannot start before this
+        float _nextIdleShift;
+        bool _headWasAway;
         float _offsetPitch, _offsetYaw, _offsetRoll;
+
+        /// <summary>How far her head is turned from straight ahead, in degrees. Her torso turns a little with it.</summary>
+        public float HeadYaw => _yaw;
 
         bool _away;
         Vector3 _awayPoint;
@@ -139,6 +151,7 @@ namespace CAIVR.VR
 
             _seed = Random.value * 100f;
             _nextAway = Time.time + Random.Range(2f, 4f);
+            _nextIdleShift = Time.time + Random.Range(2f, 5f);
 
             if (mood != null)
             {
@@ -315,31 +328,71 @@ namespace CAIVR.VR
 
         void MoveHead(Vector3 eyes)
         {
-            var toGaze = Quaternion.Inverse(transform.rotation) * (_gazePoint - eyes);
-            var flat = Mathf.Sqrt(toGaze.x * toGaze.x + toGaze.z * toGaze.z);
-            var yawToGaze = Mathf.Atan2(toGaze.x, toGaze.z) * Mathf.Rad2Deg;
-            var pitchDownToGaze = -Mathf.Atan2(toGaze.y, flat) * Mathf.Rad2Deg;
+            var now = Time.time;
 
-            // Contact: the head squares up to you once you are outside the dead zone. A glance: the head
-            // goes only a third of the way and the eyes do the rest.
-            float yawGoal;
-            if (_away) yawGoal = yawToGaze * 0.35f;
+            // Where the head would ideally point. This is the target itself, not the eyes' jittering fixation
+            // point, so the little scanning of the eyes never makes the head hunt.
+            var aim = _away ? _awayPoint : ViewerPoint(eyes);
+            var toAim = Quaternion.Inverse(transform.rotation) * (aim - eyes);
+            var flat = Mathf.Sqrt(toAim.x * toAim.x + toAim.z * toAim.z);
+            var yawToAim = Mathf.Atan2(toAim.x, toAim.z) * Mathf.Rad2Deg;
+            var pitchDownToAim = -Mathf.Atan2(toAim.y, flat) * Mathf.Rad2Deg;
+
+            // Facing you: nearly square on. A glance: the head goes only a third of the way and the eyes do the rest.
+            float idealYaw, idealPitch;
+            if (_away)
+            {
+                idealYaw = yawToAim * 0.35f;
+                idealPitch = Mathf.Clamp(pitchDownToAim * 0.35f, -8f, 10f);
+            }
             else
             {
-                var beyond = Mathf.Max(0f, Mathf.Abs(yawToGaze) - headDeadZone);
-                yawGoal = Mathf.Sign(yawToGaze) * beyond * 0.9f;
+                idealYaw = Mathf.Clamp(yawToAim * 0.9f, -maxHeadYaw, maxHeadYaw);
+                idealPitch = Mathf.Clamp(pitchDownToAim * 0.5f, -10f, 14f);
             }
 
-            yawGoal = Mathf.Clamp(yawGoal, -maxHeadYaw, maxHeadYaw);
-            var pitchGoal = Mathf.Clamp(pitchDownToGaze * 0.5f, -10f, 14f);
+            // The eyes move first and the head follows after a beat (about a tenth of a second).
+            if (_away != _headWasAway)
+            {
+                _headWasAway = _away;
+                _headNotBefore = now + Random.Range(0.07f, 0.15f);
+            }
 
-            _yaw = Mathf.SmoothDamp(_yaw, yawGoal, ref _yawVelocity, headSmoothSeconds);
-            _pitch = Mathf.SmoothDamp(_pitch, pitchGoal, ref _pitchVelocity, headSmoothSeconds);
+            // Changing its mind mid-turn (a glance away and straight back): start again from wherever it has got to.
+            if (_moving && Mathf.Abs(Mathf.DeltaAngle(_toYaw, idealYaw)) > 12f && now >= _headNotBefore)
+                BeginHeadMove(idealYaw, idealPitch, idle: false);
 
-            var t = Time.time + _seed;
-            var yaw = _yaw + _offsetYaw + Sway(t * 0.23f, 1.7f) * idleSwayDegrees;
-            var pitch = _pitch + _offsetPitch + Sway(t * 0.19f, 7.1f) * idleSwayDegrees * 0.8f;
-            var roll = _offsetRoll + Sway(t * 0.17f, 3.3f) * idleSwayDegrees * 1.2f;
+            if (!_moving && now >= _headNotBefore)
+            {
+                var off = Mathf.Max(Mathf.Abs(Mathf.DeltaAngle(_yaw, idealYaw)), Mathf.Abs(_pitch - idealPitch));
+                var threshold = _away ? 4f : headDeadZone;
+
+                if (off > threshold)
+                {
+                    BeginHeadMove(idealYaw, idealPitch, idle: false);
+                }
+                else if (now >= _nextIdleShift)
+                {
+                    // Nothing to react to, so now and then she resettles slightly, the way anyone sitting does.
+                    BeginHeadMove(idealYaw + Random.Range(-1.8f, 1.8f), idealPitch + Random.Range(-0.9f, 0.9f), idle: true);
+                }
+            }
+
+            if (_moving)
+            {
+                var u = Mathf.Clamp01((now - _moveStart) / _moveSeconds);
+                var s = MinimumJerk(u);
+
+                _yaw = Mathf.LerpUnclamped(_fromYaw, _toYaw, s);
+                _pitch = Mathf.LerpUnclamped(_fromPitch, _toPitch, s);
+
+                if (u >= 1f) _moving = false;
+            }
+
+            var t = now + _seed;
+            var yaw = _yaw + _offsetYaw + Sway(t * 0.13f, 1.7f) * idleSwayDegrees;
+            var pitch = _pitch + _offsetPitch + Sway(t * 0.11f, 7.1f) * idleSwayDegrees * 0.8f;
+            var roll = _offsetRoll + Sway(t * 0.09f, 3.3f) * idleSwayDegrees;
 
             // A turn in the character's own frame, expressed as a rotation about the world axes.
             var rootRotation = transform.rotation;
@@ -356,6 +409,35 @@ namespace CAIVR.VR
             _head.localRotation = _headRest;
             _head.rotation = turn * Quaternion.Inverse(neckTotal) * _head.rotation;
         }
+
+        Vector3 ViewerPoint(Vector3 fallbackFrom)
+        {
+            var viewerTransform = Viewer();
+            return viewerTransform != null ? viewerTransform.position : fallbackFrom + transform.forward * 2f;
+        }
+
+        /// <summary>
+        /// Starts a smooth turn of the head to a new posture. How long it takes grows with how far it goes
+        /// (a quarter of a second for a few degrees, most of a second for a big turn), and an idle resettle is slower.
+        /// </summary>
+        void BeginHeadMove(float yaw, float pitch, bool idle)
+        {
+            _fromYaw = _yaw;
+            _fromPitch = _pitch;
+            _toYaw = Mathf.Clamp(yaw, -maxHeadYaw, maxHeadYaw);
+            _toPitch = pitch;
+
+            var distance = Mathf.Max(Mathf.Abs(Mathf.DeltaAngle(_fromYaw, _toYaw)), Mathf.Abs(_toPitch - _fromPitch));
+            _moveSeconds = Mathf.Clamp(0.28f + 0.012f * distance, 0.3f, 0.9f) * (idle ? 1.5f : 1f);
+            _moveStart = Time.time;
+            _moving = true;
+
+            // Posture changes come at uneven intervals.
+            _nextIdleShift = Time.time + _moveSeconds + Random.Range(4f, 10f);
+        }
+
+        /// <summary>0 to 1 with zero speed at both ends and a single smooth peak between: how a head, an arm or an eye settles.</summary>
+        static float MinimumJerk(float u) => u * u * u * (10f + u * (-15f + 6f * u));
 
         static float Sway(float x, float y) => (Mathf.PerlinNoise(x, y) - 0.5f) * 2f;
 

@@ -203,6 +203,53 @@ namespace CAIVR.EditorTools
         public static void Create() => Build();
 
         /// <summary>
+        /// Rebuilds the menu, captions, hints, briefing card and notebook in the existing scene, leaving the room,
+        /// its baked lighting and the professor alone. The full build re-bakes the lighting and rewrites its
+        /// lightmaps, which none of the interface depends on.
+        /// </summary>
+        [MenuItem("CAIVR/VR/Rebuild UI Only", priority = 102)]
+        public static void RebuildUi()
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+
+            if (scene.path != OutputScene)
+            {
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+                if (!File.Exists(OutputScene))
+                {
+                    Debug.LogError($"[CAIVR] {OutputScene} does not exist yet. Run Create VR Consultation Scene first.");
+                    return;
+                }
+
+                scene = EditorSceneManager.OpenScene(OutputScene, OpenSceneMode.Single);
+            }
+
+            ResolveSpots();
+            EnsureUiAssets();
+
+            foreach (var name in new[] { "Subtitles", "Hints", "UI Fonts", "Scenario Menu", "Scenario Intro", "Context Notebook" })
+            {
+                var existing = GameObject.Find(name);
+                if (existing != null) Object.DestroyImmediate(existing);
+            }
+
+            var runner = Object.FindFirstObjectByType<ConversationRunner>();
+            var speech = Object.FindFirstObjectByType<SpeechService>();
+            var voice = Object.FindFirstObjectByType<VoiceLinePlayer>();
+
+            AddSubtitles(runner, speech);
+            AddHints(runner);
+            AddFontWarmup();
+            var menu = AddMenu();
+            AddIntro(runner, voice, menu);
+            AddNotebook(runner);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[CAIVR] Interface rebuilt in the consultation scene.");
+        }
+
+        /// <summary>
         /// Puts a freshly built professor into the existing scene without regenerating the rest. The full
         /// build re-bakes the room's lighting, which takes a while and rewrites its lightmaps; the
         /// professor is not part of the baked light, so changes to her do not need any of that.
@@ -285,6 +332,8 @@ namespace CAIVR.EditorTools
             var conversation = AddConversation();
             AddProfessor(conversation.voice);
             AddSubtitles(conversation.runner, conversation.speech);
+            AddHints(conversation.runner);
+            AddFontWarmup();
             var menu = AddMenu();
             AddIntro(conversation.runner, conversation.voice, menu);
             AddNotebook(conversation.runner);
@@ -334,6 +383,25 @@ namespace CAIVR.EditorTools
             }
 
             Mat("UiBezel", new Color(0.02f, 0.05f, 0.09f), 0.55f, 0.5f, ResourcesMaterialFolder);
+
+            // The material that draws UI over the room's geometry, and the Chinese font with its on-top copies.
+            EnsureOnTopMaterial();
+            UiFonts.Ensure();
+        }
+
+        static void EnsureOnTopMaterial()
+        {
+            var path = $"{ResourcesMaterialFolder}/UiOnTop.mat";
+            if (AssetDatabase.LoadAssetAtPath<Material>(path) != null) return;
+
+            var shader = Shader.Find("CAIVR/UI On Top");
+            if (shader == null)
+            {
+                Debug.LogWarning("[CAIVR] The UI On Top shader is missing, so the menu will not draw over the room.");
+                return;
+            }
+
+            AssetDatabase.CreateAsset(new Material(shader) { name = "UiOnTop" }, path);
         }
 
         // --- scene plumbing --------------------------------------------------
@@ -583,17 +651,31 @@ namespace CAIVR.EditorTools
             SetRef(hud, "speech", speech);
         }
 
+        static void AddHints(ConversationRunner runner)
+        {
+            // Suggestions of what to say, shown only when the student seems stuck.
+            var go = new GameObject("Hints");
+            var hud = go.AddComponent<HintHud>();
+            SetRef(hud, "runner", runner);
+        }
+
+        static void AddFontWarmup()
+        {
+            // Draws the Chinese characters into the font atlas a few at a time as the scene loads.
+            new GameObject("UI Fonts", typeof(UiFontWarmup));
+        }
+
         static VrMenuPanel AddMenu()
         {
-            // Floating just in front of the student, tilted down a little the way
-            // you would hold a tablet. Read, choose, press Start, and it is gone.
+            // The panel holds itself in front of wherever the student looks, like a tablet (see VrMenuPanel), so
+            // this only says roughly where it starts. Read, choose, press Start, and it is gone.
             var go = new GameObject("Scenario Menu");
             go.transform.SetPositionAndRotation(
                 StudentSpot + Forward * 1.05f + Vector3.up * 1.12f,
                 Quaternion.LookRotation(Forward) * Quaternion.Euler(8f, 0f, 0f));
 
             var menu = go.AddComponent<VrMenuPanel>();
-            SetFloat(menu, "widthMeters", 1.15f);
+            SetFloat(menu, "widthMeters", 1.0f);
             return menu;
         }
 
@@ -655,7 +737,7 @@ namespace CAIVR.EditorTools
             var page = canvas.transform;
             VrUi.Surface(page, "Paper", Layout.Fill(), new Color(0.98f, 0.97f, 0.93f), 14f);
             VrUi.Surface(page, "Accent", Layout.TopStretch(24, 24, 24, 8), MonashTheme.Blue, 4f);
-            VrUi.Eyebrow(page, "Heading", Layout.TopLeft(24, 44, 340, 30), "Background", MonashTheme.Blue);
+            var heading = VrUi.Eyebrow(page, "Heading", Layout.TopLeft(24, 44, 340, 30), "Background", MonashTheme.Blue);
 
             var text = VrUi.Text(page, "Text", Layout.TopStretch(24, 88, 24, 380),
                 "Your situation appears here when the consultation starts.", 30, MonashTheme.BlueDeep,
@@ -669,6 +751,7 @@ namespace CAIVR.EditorTools
             SetRef(notebook, "grab", grab);
             SetRef(notebook, "pageText", text);
             SetRef(notebook, "hint", hint);
+            SetRef(notebook, "heading", heading);
         }
 
         // --- helpers ---------------------------------------------------------

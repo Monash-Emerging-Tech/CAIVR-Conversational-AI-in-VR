@@ -143,7 +143,27 @@
           ],
           "nextNodeId": "struggling_open"
         }
-      ]
+      ],
+      "speakerLineZh": "进来吧，请坐。不好意思，有点乱。那么，你今天想聊些什么？",
+      "repromptZh": "慢慢来。你是为什么事来的？",
+      "hints": [
+        "Ask for an extension",
+        "Ask about the assignment brief",
+        "Ask about your feedback or mark",
+        "Talk about a group work problem",
+        "Ask about AI or referencing",
+        "Say you are struggling with the unit"
+      ],
+      "hintsZh": [
+        "申请延期",
+        "询问作业要求",
+        "询问反馈或分数",
+        "说说小组作业的问题",
+        "询问AI使用或引用规范",
+        "说你这门课学得很吃力"
+      ],
+      "hintExample": "Hi, I'd like to ask for an extension on my assignment.",
+      "hintExampleZh": "你好，我想为我的作业申请延期。"
     },
     {
       "id": "extension_reason",
@@ -238,7 +258,21 @@
           ],
           "nextNodeId": "extension_policy"
         }
-      ]
+      ],
+      "speakerLineZh": "要延期啊。好的。你想延多久，原因是什么？",
+      "repromptZh": "你还需要多长时间，为什么？",
+      "hints": [
+        "Say how long you need",
+        "Give your reason, such as being ill",
+        "Ask what the extension rules are"
+      ],
+      "hintsZh": [
+        "说明你需要多长时间",
+        "说出原因，比如生病",
+        "问一问延期的规定"
+      ],
+      "hintExample": "I need another week because I've been unwell.",
+      "hintExampleZh": "我需要再多一周，因为我一直不舒服。"
     },
     {
       "id": "extension_push",
@@ -285,7 +319,19 @@
           ],
           "nextNodeId": "extension_declined"
         }
-      ]
+      ],
+      "speakerLineZh": "嗯。听着，光是忙并不构成延期的理由，不然我就得给所有人延期了。是不是还有别的情况？",
+      "repromptZh": "我这么问，是因为如果真有原因，是有正规渠道的。有吗？",
+      "hints": [
+        "Explain what is really going on",
+        "Accept that this is not enough for an extension"
+      ],
+      "hintsZh": [
+        "说明真正的情况",
+        "接受这不足以申请延期"
+      ],
+      "hintExample": "Actually, I've been ill and I didn't want to say.",
+      "hintExampleZh": "其实我一直身体不舒服，只是之前没好意思说。"
     },
     {
       "id": "extension_evidence",
@@ -346,7 +392,21 @@
           ],
           "nextNodeId": "extension_evidence_explain"
         }
-      ]
+      ],
+      "speakerLineZh": "好的，听到这个我很难过。你有相关证明吗？比如医疗证明，或者学生服务中心开的证明？",
+      "repromptZh": "你有什么书面材料可以附在申请里吗？",
+      "hints": [
+        "Say you have a medical certificate",
+        "Say you have no documentation",
+        "Ask what counts as documentation"
+      ],
+      "hintsZh": [
+        "说你有医疗证明",
+        "说你没有任何证明",
+        "问哪些材料可以算作证明"
+      ],
+      "hintExample": "I don't have a certificate, but I can ask my doctor for one.",
+      "hintExampleZh": "我现在没有证明，但我可以向医生要一份。"
     },
     {
       "id": "extension_granted",
@@ -373,7 +433,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "好。周五之前把它发给我，我会把你的截止日期延长一周。别拖过周五，否则申请就会转到学院，到时我就管不了了。",
+      "repromptZh": "这样你可以吗？",
+      "hints": [
+        "Agree and thank the professor",
+        "Confirm you will send it by Friday"
+      ],
+      "hintsZh": [
+        "表示同意并感谢教授",
+        "确认你会在周五前发送"
+      ],
+      "hintExample": "That works, thank you. I'll send it by Friday.",
+      "hintExampleZh": "可以，谢谢您。我周五之前发给您。"
     },
     {
       "id": "extension_conditional",
@@ -436,7 +508,21 @@
           ],
           "nextNodeId": "extension_firm"
         }
-      ]
+      ],
+      "speakerLineZh": "没有证明的话，我最多只能给你七十二小时，而且这还是我酌情处理。我也希望你这周去找一下学生服务中心。你能做到吗？",
+      "repromptZh": "七十二小时，再加上和学生服务中心谈一谈。你能答应吗？",
+      "hints": [
+        "Ask if a certificate would get you longer",
+        "Accept the 72 hours",
+        "Ask for more time"
+      ],
+      "hintsZh": [
+        "问有证明能不能延得更久",
+        "接受七十二小时",
+        "争取更长时间"
+      ],
+      "hintExample": "Would a medical certificate let me have longer?",
+      "hintExampleZh": "如果有医疗证明，能延得更久吗？"
     },
     {
       "id": "extension_firm",
@@ -482,7 +568,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "我理解，但没有材料的话，七十二小时确实是我能做到的极限。你把证明拿来，我可以再重新考虑。这是我的实话。",
+      "repromptZh": "我知道这不是你想听的。我们没问题吧？",
+      "hints": [
+        "Ask if documentation would get you longer",
+        "Accept the limit"
+      ],
+      "hintsZh": [
+        "问有证明能不能延得更久",
+        "接受这个上限"
+      ],
+      "hintExample": "I understand. What if I bring a certificate?",
+      "hintExampleZh": "我明白了。如果我带来证明呢？"
     },
     {
       "id": "extension_declined",
@@ -507,7 +605,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "谢谢你跟我坦诚相告。我的建议是：在截止日期前把你已有的内容交上来。按我们的评分标准，迟交但完整的作业，得分比按时交的不完整作业还低。",
+      "repromptZh": "这样说你明白吗？",
+      "hints": [
+        "Say you understand",
+        "Thank the professor for the advice"
+      ],
+      "hintsZh": [
+        "表示你明白了",
+        "感谢教授的建议"
+      ],
+      "hintExample": "That makes sense. I'll submit what I have.",
+      "hintExampleZh": "有道理。我会把现有的内容交上去。"
     },
     {
       "id": "brief_which_part",
@@ -549,7 +659,19 @@
           ],
           "nextNodeId": "brief_format_answer"
         }
-      ]
+      ],
+      "speakerLineZh": "当然。说实话，这份作业要求确实有点复杂。具体是哪一部分让你为难？",
+      "repromptZh": "你具体卡在哪一块？",
+      "hints": [
+        "Say you are unsure about the topic scope",
+        "Ask about word count or format"
+      ],
+      "hintsZh": [
+        "说你不确定题目范围",
+        "询问字数或格式"
+      ],
+      "hintExample": "I'm not sure if my topic is too broad.",
+      "hintExampleZh": "我不确定我的题目是不是太宽泛了。"
     },
     {
       "id": "brief_scope_answer",
@@ -577,7 +699,19 @@
           ],
           "nextNodeId": "brief_scope_followup"
         }
-      ]
+      ],
+      "speakerLineZh": "你问得好。经验法则：如果你没法用一句话说清你的研究问题，又不用到“和”这个字，那就说明太宽了。把它缩小，直到能做到为止。你的题目是什么？",
+      "repromptZh": "你打算写什么主题？",
+      "hints": [
+        "Tell the professor your topic",
+        "Describe it roughly, one sentence is enough"
+      ],
+      "hintsZh": [
+        "告诉教授你的题目",
+        "大概描述一下，一句话就够"
+      ],
+      "hintExample": "I'm writing about social media and student stress.",
+      "hintExampleZh": "我打算写社交媒体和学生压力。"
     },
     {
       "id": "brief_scope_followup",
@@ -604,7 +738,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "这样也行，但我建议再砍掉一半。选一个人群、一个时间段、一个结果。周三之前给我发一句话的研究问题，我告诉你是不是足够聚焦。",
+      "repromptZh": "周三之前你能给我一句话吗？",
+      "hints": [
+        "Agree to narrow your topic",
+        "Say you will send the question by Wednesday"
+      ],
+      "hintsZh": [
+        "同意缩小题目范围",
+        "说你会在周三前发送研究问题"
+      ],
+      "hintExample": "OK, I'll narrow it down and send you a question by Wednesday.",
+      "hintExampleZh": "好的，我会缩小范围，周三之前把问题发给您。"
     },
     {
       "id": "brief_format_answer",
@@ -630,7 +776,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "两千字，上下浮动百分之十，不含参考文献。哈佛格式。附录不计入字数，免得你再问。",
+      "repromptZh": "格式方面还有别的问题吗？",
+      "hints": [
+        "Say you understand",
+        "Ask if there is anything else about formatting"
+      ],
+      "hintsZh": [
+        "表示你明白了",
+        "问格式方面还有没有别的要求"
+      ],
+      "hintExample": "Got it, thanks. That's all I needed to know.",
+      "hintExampleZh": "明白了，谢谢。我想问的就这些。"
     },
     {
       "id": "feedback_which",
@@ -671,7 +829,19 @@
           ],
           "nextNodeId": "feedback_draft"
         }
-      ]
+      ],
+      "speakerLineZh": "当然可以。你是想问已经拿到的分数，还是想让我看看新的内容？",
+      "repromptZh": "是已有的反馈，还是新的内容？",
+      "hints": [
+        "Ask about the mark you already got",
+        "Ask the professor to look at a new draft"
+      ],
+      "hintsZh": [
+        "询问已经拿到的分数",
+        "请教授看一份新草稿"
+      ],
+      "hintExample": "I'd like to understand the feedback on my mark.",
+      "hintExampleZh": "我想弄明白我这个分数的反馈是什么意思。"
     },
     {
       "id": "feedback_explain",
@@ -713,7 +883,19 @@
           ],
           "nextNodeId": "feedback_teach"
         }
-      ]
+      ],
+      "speakerLineZh": "我们来看看。我的批注写的是，你的论证偏描述性，而不是分析性。你知道我说的是什么意思吗？",
+      "repromptZh": "跟我说实话，那条批注你看得明白吗？",
+      "hints": [
+        "Admit you are not sure what it means",
+        "Try to explain it in your own words"
+      ],
+      "hintsZh": [
+        "坦白说你不确定是什么意思",
+        "试着用自己的话解释"
+      ],
+      "hintExample": "Honestly, I'm not sure what descriptive versus analytical means.",
+      "hintExampleZh": "说实话，我不太明白“描述性”和“分析性”有什么区别。"
     },
     {
       "id": "feedback_teach",
@@ -739,7 +921,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "描述性是告诉我发生了什么，分析性是告诉我这件事为什么重要、会带来什么后果。每一段的结尾都应该有一句“那又怎样”。试着给每一段加上这一句，再发回给我。",
+      "repromptZh": "试一试，看看读起来怎么样。可以吗？",
+      "hints": [
+        "Say you understand and will revise",
+        "Ask for an example"
+      ],
+      "hintsZh": [
+        "表示你明白了，会去修改",
+        "请教授举个例子"
+      ],
+      "hintExample": "I understand. I'll add a 'so what' to each paragraph.",
+      "hintExampleZh": "我明白了。我会在每一段加上一句“那又怎样”。"
     },
     {
       "id": "feedback_draft",
@@ -766,7 +960,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "乐意。咨询时间我不会通读整篇草稿，但如果你今晚把它发邮件给我，我会在周四之前给前两页写上批注。这样有帮助吗？",
+      "repromptZh": "这样对你有用吗？",
+      "hints": [
+        "Accept the offer",
+        "Say you will email it tonight"
+      ],
+      "hintsZh": [
+        "接受教授的提议",
+        "说你今晚会发邮件"
+      ],
+      "hintExample": "That would help a lot. I'll email it tonight.",
+      "hintExampleZh": "那会很有帮助。我今晚就发邮件给您。"
     },
     {
       "id": "wrap_up",
@@ -825,7 +1031,21 @@
           ],
           "nextNodeId": "wrap_up_warm"
         }
-      ]
+      ],
+      "speakerLineZh": "好。你来都来了，还有别的事吗？",
+      "repromptZh": "还有别的事吗，还是就到这里？",
+      "hints": [
+        "Say you have nothing else and thank the professor",
+        "Raise one more question",
+        "Thank the professor warmly"
+      ],
+      "hintsZh": [
+        "说没有别的事了并道谢",
+        "再提一个问题",
+        "真诚地感谢教授"
+      ],
+      "hintExample": "No, that's everything. Thank you so much for your help.",
+      "hintExampleZh": "没有了，就这些。非常感谢您的帮助。"
     },
     {
       "id": "wrap_up_more",
@@ -851,7 +1071,19 @@
           ],
           "nextNodeId": "farewell"
         }
-      ]
+      ],
+      "speakerLineZh": "那你说吧，抓紧点。我半点钟还有另一位学生。",
+      "repromptZh": "是什么事？",
+      "hints": [
+        "Ask your last question",
+        "Keep it short"
+      ],
+      "hintsZh": [
+        "问你最后一个问题",
+        "尽量简短"
+      ],
+      "hintExample": "Quick question: when are the results released?",
+      "hintExampleZh": "快问一个问题：成绩什么时候出？"
     },
     {
       "id": "farewell",
@@ -859,7 +1091,13 @@
       "expectation": "End of conversation.",
       "reprompt": "",
       "isEnd": true,
-      "branches": []
+      "branches": [],
+      "speakerLineZh": "好。你来问清楚而不是瞎猜，这很好，这正是咨询的意义。周四辅导课上见。",
+      "repromptZh": "",
+      "hints": [],
+      "hintsZh": [],
+      "hintExample": "",
+      "hintExampleZh": ""
     },
     {
       "id": "extension_policy",
@@ -907,7 +1145,19 @@
           ],
           "nextNodeId": "extension_push"
         }
-      ]
+      ],
+      "speakerLineZh": "问得合理。有证明的话，我最多能给你一周；没有的话，七十二小时是我的上限；再长就要报到学院了。那么，你想说的是哪一种？",
+      "repromptZh": "那你需要延期的原因是什么？",
+      "hints": [
+        "Give your reason for needing an extension",
+        "Say if you have documentation"
+      ],
+      "hintsZh": [
+        "说出你需要延期的原因",
+        "说明你有没有证明材料"
+      ],
+      "hintExample": "I've been sick for two weeks, so I need more time.",
+      "hintExampleZh": "我病了两周，所以需要更多时间。"
     },
     {
       "id": "extension_evidence_explain",
@@ -949,7 +1199,19 @@
           ],
           "nextNodeId": "extension_conditional"
         }
-      ]
+      ],
+      "speakerLineZh": "任何全科医生开的医疗证明都可以；如果你在学生服务中心登记过，他们的信也可以。光是预约的截图不够，上面必须写明你当时不适合学习。",
+      "repromptZh": "那么，你能拿到类似的证明吗？",
+      "hints": [
+        "Say you can get a certificate",
+        "Say you cannot get one"
+      ],
+      "hintsZh": [
+        "说你可以拿到证明",
+        "说你拿不到证明"
+      ],
+      "hintExample": "I can book a doctor's appointment and get one.",
+      "hintExampleZh": "我可以预约医生，然后开一份证明。"
     },
     {
       "id": "group_issue",
@@ -1012,7 +1274,21 @@
           ],
           "nextNodeId": "group_logistics"
         }
-      ]
+      ],
+      "speakerLineZh": "小组作业啊。嗯，我收到的邮件有一半都是这个。到底发生了什么？",
+      "repromptZh": "小组里是怎么回事？",
+      "hints": [
+        "A teammate is not doing their share",
+        "The group disagrees",
+        "You cannot find time to meet"
+      ],
+      "hintsZh": [
+        "有组员没有出力",
+        "小组内部有分歧",
+        "大家凑不出时间开会"
+      ],
+      "hintExample": "One of my teammates isn't doing any work.",
+      "hintExampleZh": "我有一位组员什么都没做。"
     },
     {
       "id": "group_freeloader",
@@ -1056,7 +1332,19 @@
           ],
           "nextNodeId": "group_advise_first"
         }
-      ]
+      ],
+      "speakerLineZh": "这确实让人沮丧，而且比大家愿意承认的更常见。你有没有直接跟他们说过？",
+      "repromptZh": "你真的跟他们提过吗？",
+      "hints": [
+        "Say you have already talked to them",
+        "Say you have not talked to them yet"
+      ],
+      "hintsZh": [
+        "说你已经跟他们谈过了",
+        "说你还没跟他们谈过"
+      ],
+      "hintExample": "I've messaged them twice but nothing changed.",
+      "hintExampleZh": "我已经给他们发过两次消息，但没有任何改变。"
     },
     {
       "id": "group_advise_first",
@@ -1103,7 +1391,19 @@
           ],
           "nextNodeId": "group_reassure"
         }
-      ]
+      ],
+      "speakerLineZh": "那这就是你的第一步，我知道这一步让人不自在。给小组发消息，具体说明哪些还没完成，并且定一个日期。一定要留下文字记录。",
+      "repromptZh": "这周你能跟他们谈一次吗？",
+      "hints": [
+        "Agree to message the group",
+        "Say you are worried about the conflict"
+      ],
+      "hintsZh": [
+        "同意给小组发消息",
+        "说你担心引起冲突"
+      ],
+      "hintExample": "OK, I'll message the group this week.",
+      "hintExampleZh": "好的，我这周就给小组发消息。"
     },
     {
       "id": "group_reassure",
@@ -1131,7 +1431,19 @@
           ],
           "nextNodeId": "group_followup"
         }
-      ]
+      ],
+      "speakerLineZh": "我理解。但如果真要由我来重新分配分数，我第一件事就是要你尝试解决过的证据。小组群里一条礼貌的消息就是这样的证据。它能保护你。",
+      "repromptZh": "这样做的理由你明白吗？",
+      "hints": [
+        "Say that makes sense",
+        "Agree to raise it with the group"
+      ],
+      "hintsZh": [
+        "说这样做有道理",
+        "同意跟小组说这件事"
+      ],
+      "hintExample": "That makes sense. I'll send a polite message.",
+      "hintExampleZh": "有道理。我会发一条礼貌的消息。"
     },
     {
       "id": "group_escalate",
@@ -1158,7 +1470,19 @@
           ],
           "nextNodeId": "group_followup"
         }
-      ]
+      ],
+      "speakerLineZh": "很好，那你已经尽到了自己的责任。把消息转发给我，我会直接联系他们。如果还是没有改变，我可以按个人贡献分别打分。在我的课上，没有人需要一个人扛起整个小组。",
+      "repromptZh": "把那些消息发给我，我来处理。好吗？",
+      "hints": [
+        "Thank the professor",
+        "Say you will forward the messages"
+      ],
+      "hintsZh": [
+        "感谢教授",
+        "说你会转发那些消息"
+      ],
+      "hintExample": "Thank you. I'll forward the messages today.",
+      "hintExampleZh": "谢谢您。我今天就把消息转发给您。"
     },
     {
       "id": "group_conflict",
@@ -1185,7 +1509,19 @@
           ],
           "nextNodeId": "group_followup"
         }
-      ]
+      ],
+      "speakerLineZh": "有分歧不一定是坏事，通常说明大家都在乎。我的建议是：把两个方案写下来，列出各自要花多少时间，然后按评分标准，而不是互相对着干，一起做决定。",
+      "repromptZh": "试一试，看看能不能解决。听起来可行吗？",
+      "hints": [
+        "Say you will try that",
+        "Ask how to run the discussion"
+      ],
+      "hintsZh": [
+        "说你会试试这个办法",
+        "问问怎样组织讨论"
+      ],
+      "hintExample": "That sounds good. We'll write down both options.",
+      "hintExampleZh": "听起来不错。我们会把两个方案都写下来。"
     },
     {
       "id": "group_logistics",
@@ -1211,7 +1547,19 @@
           ],
           "nextNodeId": "group_followup"
         }
-      ]
+      ],
+      "speakerLineZh": "你们不需要都坐在同一个房间里。把工作拆成可以单独完成的部分，用文字约定好衔接方式，每周只开一次二十分钟的会。大多数小组开会太多，决定太少。",
+      "repromptZh": "这样对你们小组可行吗？",
+      "hints": [
+        "Say that sounds workable",
+        "Ask about splitting the work"
+      ],
+      "hintsZh": [
+        "说听起来可行",
+        "问问怎样分工"
+      ],
+      "hintExample": "That would work for us. We'll split the tasks.",
+      "hintExampleZh": "这对我们可行。我们会分一下任务。"
     },
     {
       "id": "group_followup",
@@ -1237,7 +1585,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "如果离截止日期还有一周的时候问题还没解决，就回来找我。别拖到前一天晚上，那时我就没什么办法了。",
+      "repromptZh": "如果没有改善就回来找我。好吗？",
+      "hints": [
+        "Agree to come back if it is not solved",
+        "Thank the professor"
+      ],
+      "hintsZh": [
+        "同意问题没解决就再来找教授",
+        "感谢教授"
+      ],
+      "hintExample": "I will. Thanks for the advice.",
+      "hintExampleZh": "我会的。谢谢您的建议。"
     },
     {
       "id": "integrity_which",
@@ -1283,7 +1643,19 @@
           ],
           "nextNodeId": "integrity_referencing"
         }
-      ]
+      ],
+      "speakerLineZh": "我宁愿你来问，也不要自己瞎猜。那么，你担心的是什么？",
+      "repromptZh": "你担心的是什么？",
+      "hints": [
+        "Say you used an AI tool",
+        "Say you are worried about referencing"
+      ],
+      "hintsZh": [
+        "说你用了AI工具",
+        "说你担心引用的问题"
+      ],
+      "hintExample": "I used an AI tool and I'm not sure if that's allowed.",
+      "hintExampleZh": "我用了AI工具，不确定这是否允许。"
     },
     {
       "id": "integrity_ai",
@@ -1329,7 +1701,19 @@
           ],
           "nextNodeId": "integrity_ai_problem"
         }
-      ]
+      ],
+      "speakerLineZh": "好的。本课程的规定是：你可以用它检查语法，或者检验自己的理解，但分析必须出自你自己，并且要声明使用情况。所以请老实告诉我，你用它做了什么？",
+      "repromptZh": "你到底用它做了什么？",
+      "hints": [
+        "Say you used it to check grammar or understand ideas",
+        "Say it wrote part of your work"
+      ],
+      "hintsZh": [
+        "说你用它检查语法或理解概念",
+        "说它帮你写了一部分内容"
+      ],
+      "hintExample": "I only used it to check my grammar.",
+      "hintExampleZh": "我只用它检查了语法。"
     },
     {
       "id": "integrity_ai_ok",
@@ -1357,7 +1741,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "这在规定范围内。在末尾加一句话，说明你用了什么、用来做什么，一句话就够。声明出来，才算光明正大。",
+      "repromptZh": "加上这条声明就没问题了。清楚了吗？",
+      "hints": [
+        "Say you understand",
+        "Say you will add the declaration"
+      ],
+      "hintsZh": [
+        "表示你明白了",
+        "说你会加上声明"
+      ],
+      "hintExample": "I understand. I'll add a line at the end.",
+      "hintExampleZh": "我明白了。我会在末尾加一句话。"
     },
     {
       "id": "integrity_ai_problem",
@@ -1385,7 +1781,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "好的，我很高兴你告诉了我。那部分必须用你自己的话重写，因为照现在这样，它不是你的分析，而评分标准评的是你的分析。提交之前改好，就不存在不当行为的问题；要是隐瞒，就有了。",
+      "repromptZh": "把那一部分重写，其余的做声明。你能做到吗？",
+      "hints": [
+        "Say you will rewrite that section",
+        "Thank the professor for being understanding"
+      ],
+      "hintsZh": [
+        "说你会重写那一部分",
+        "感谢教授的理解"
+      ],
+      "hintExample": "I'll rewrite that part in my own words.",
+      "hintExampleZh": "我会用自己的话重写那一部分。"
     },
     {
       "id": "integrity_referencing",
@@ -1413,7 +1821,19 @@
           ],
           "nextNodeId": "integrity_referencing_answer"
         }
-      ]
+      ],
+      "speakerLineZh": "相似度分数把人吓得比实际严重得多，引用和参考文献列表都会被标出来。关键在于，不是你自己的想法，有没有注明出处。你是哪里不确定？",
+      "repromptZh": "你对哪一部分不确定？",
+      "hints": [
+        "Describe what you are unsure about",
+        "Give an example of a source you used"
+      ],
+      "hintsZh": [
+        "描述你不确定的地方",
+        "举一个你用过的资料的例子"
+      ],
+      "hintExample": "I'm not sure when I need to cite a source.",
+      "hintExampleZh": "我不确定什么时候需要注明出处。"
     },
     {
       "id": "integrity_referencing_answer",
@@ -1440,7 +1860,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "那就引用它。我对所有人都这么说：如果你在开始阅读之前就知道，那它是你的；如果是从某个材料里学到的，就要加引用。在我的课上，多引用从来没让任何人丢过分。",
+      "repromptZh": "引用了就安全了。明白吗？",
+      "hints": [
+        "Say you understand",
+        "Say you will cite your sources"
+      ],
+      "hintsZh": [
+        "表示你明白了",
+        "说你会标注引用来源"
+      ],
+      "hintExample": "That's clear. I'll cite everything I learned.",
+      "hintExampleZh": "很清楚。我会把学到的内容都标注出处。"
     },
     {
       "id": "struggling_open",
@@ -1481,7 +1913,19 @@
           ],
           "nextNodeId": "struggling_ongoing"
         }
-      ]
+      ],
+      "speakerLineZh": "好的。谢谢你告诉我，这样的话不容易说出口。这种感觉持续多久了？",
+      "repromptZh": "这样多久了？",
+      "hints": [
+        "Say it has only been a few weeks",
+        "Say it has been all semester"
+      ],
+      "hintsZh": [
+        "说只是最近几周",
+        "说整个学期都是这样"
+      ],
+      "hintExample": "It's been like this for the whole semester.",
+      "hintExampleZh": "整个学期我都是这个状态。"
     },
     {
       "id": "struggling_ongoing",
@@ -1525,7 +1969,19 @@
           ],
           "nextNodeId": "struggling_persist"
         }
-      ]
+      ],
+      "speakerLineZh": "那是很长一段时间都在独自承受。我跟你直说：这比一份作业大得多，也不是你我在二十分钟的咨询里能解决的。",
+      "repromptZh": "你觉得这样公平吗？",
+      "hints": [
+        "Agree that you need more support",
+        "Say you are fine and downplay it"
+      ],
+      "hintsZh": [
+        "同意你需要更多支持",
+        "说你没事，轻描淡写带过"
+      ],
+      "hintExample": "I think you're right. I need some support.",
+      "hintExampleZh": "我想您说得对，我需要一些支持。"
     },
     {
       "id": "struggling_persist",
@@ -1553,7 +2009,19 @@
           ],
           "nextNodeId": "struggling_support"
         }
-      ]
+      ],
+      "speakerLineZh": "也许吧。但你来到这里并说了出来，人们没事的时候通常不会这么说。我不会逼你，我只是希望你去找专业做这件事的人谈，而不是找我。",
+      "repromptZh": "你愿意跟别人谈谈吗？",
+      "hints": [
+        "Say you are willing to talk to someone",
+        "Thank the professor"
+      ],
+      "hintsZh": [
+        "说你愿意跟别人谈谈",
+        "感谢教授"
+      ],
+      "hintExample": "OK, maybe I should talk to someone.",
+      "hintExampleZh": "好吧，也许我应该找人谈谈。"
     },
     {
       "id": "struggling_support",
@@ -1598,7 +2066,19 @@
           ],
           "nextNodeId": "struggling_drop"
         }
-      ]
+      ],
+      "speakerLineZh": "学生服务中心在B楼二层，你可以直接走进去，不需要预约。他们还可以帮你登记适用于所有课程的调整措施，不只是我这门课。这周你会去吗？",
+      "repromptZh": "这周你会去见他们吗？",
+      "hints": [
+        "Say you will go this week",
+        "Ask about dropping the unit"
+      ],
+      "hintsZh": [
+        "说你这周会去",
+        "问问退课的事"
+      ],
+      "hintExample": "Yes, I'll go this week.",
+      "hintExampleZh": "好的，我这周会去。"
     },
     {
       "id": "struggling_drop",
@@ -1625,7 +2105,19 @@
           ],
           "nextNodeId": "struggling_unit"
         }
-      ]
+      ],
+      "speakerLineZh": "在学期统计日之前退课不会影响学业成绩，但本学期的统计日已经过了，所以现在退课会记录在你的档案里。这并不是世界末日，但这是应该和顾问一起做的决定，而不是在走廊里随口决定。",
+      "repromptZh": "做任何决定之前先跟顾问谈一谈。好吗？",
+      "hints": [
+        "Say you will talk to an adviser first",
+        "Thank the professor"
+      ],
+      "hintsZh": [
+        "说你会先去找顾问谈",
+        "感谢教授"
+      ],
+      "hintExample": "I'll talk to an adviser before I decide.",
+      "hintExampleZh": "我会先找顾问谈，再做决定。"
     },
     {
       "id": "struggling_unit",
@@ -1652,7 +2144,19 @@
           ],
           "nextNodeId": "wrap_up"
         }
-      ]
+      ],
+      "speakerLineZh": "至于这门课，周五之前把你有的内容交上来，哪怕不完整。按时交一份不完整的作业，比什么都不交得分更高，也能在你处理其他事情时给你留出选择余地。",
+      "repromptZh": "周五之前给我一些东西，哪怕很粗糙。你能做到吗？",
+      "hints": [
+        "Agree to submit what you have by Friday",
+        "Ask if a partial submission is okay"
+      ],
+      "hintsZh": [
+        "同意周五前交上现有内容",
+        "问不完整的提交行不行"
+      ],
+      "hintExample": "I'll submit what I have by Friday.",
+      "hintExampleZh": "我会在周五之前把现有的内容交上去。"
     },
     {
       "id": "wrap_up_warm",
@@ -1679,7 +2183,19 @@
           ],
           "nextNodeId": "farewell"
         }
-      ]
+      ],
+      "speakerLineZh": "不客气。而且说句心里话，愿意来问的学生通常都没事。真正让我担心的，是那些不来的。",
+      "repromptZh": "走之前还有别的事吗？",
+      "hints": [
+        "Say goodbye",
+        "Say you have nothing else"
+      ],
+      "hintsZh": [
+        "说再见",
+        "说没有别的事了"
+      ],
+      "hintExample": "Thanks again, goodbye.",
+      "hintExampleZh": "再次感谢，再见。"
     },
     {
       "id": "extension_docs_would_help",
@@ -1728,7 +2244,24 @@
           ],
           "nextNodeId": "extension_firm"
         }
-      ]
+      ],
+      "speakerLineZh": "对，这正是关键。有医疗证明的话，我可以给你整整一周，而不是七十二小时。我宁愿这样，也不想让你仓促赶工。你能拿到一份吗？",
+      "repromptZh": "那么，你能拿到证明吗？",
+      "hints": [
+        "Say you can get a certificate",
+        "Say you cannot get documentation"
+      ],
+      "hintsZh": [
+        "说你可以拿到证明",
+        "说你拿不到证明"
+      ],
+      "hintExample": "Yes, I can get a certificate from my doctor.",
+      "hintExampleZh": "可以，我能请医生开一份证明。"
     }
+  ],
+  "contextVariantsZh": [
+    "距离你第二单元研究报告的截止日期只剩三天，而你几乎还没动笔。过去两周你大部分时间都不舒服，却一直没去看医生。你预约了与Ellery博士的咨询，想申请延期。",
+    "上周你提交了研究报告的草稿，拿回来的分数比你预期的低。你看不懂反馈意见。你预约了与Ellery博士的咨询，想问清楚这是什么意思。",
+    "你的研究报告作业要求对题目允许的范围写得含糊不清。你选的题目，你担心太大了。你预约了与Ellery博士的咨询，想在动笔之前先确认一下。"
   ]
 }

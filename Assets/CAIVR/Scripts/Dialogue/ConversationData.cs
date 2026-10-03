@@ -23,6 +23,9 @@ namespace CAIVR.Dialogue
         /// </summary>
         public string[] contextVariants;
 
+        /// <summary>The same contexts in Chinese, in the same order. Shown when the student's interface is in Chinese.</summary>
+        public string[] contextVariantsZh;
+
         /// <summary>
         /// Ground truth about this scenario's world: who the professor is, what
         /// the unit is, what the assignment requires, what the policies are.
@@ -60,13 +63,23 @@ namespace CAIVR.Dialogue
             return _index.TryGetValue(nodeId, out var found) ? found : null;
         }
 
+        /// <summary>Which of the contexts <see cref="PickContext"/> last chose, or -1.</summary>
+        public int PickedContextIndex { get; private set; } = -1;
+
         public string PickContext()
         {
             if (contextVariants == null || contextVariants.Length == 0)
                 return "(no background context authored)";
 
-            return contextVariants[UnityEngine.Random.Range(0, contextVariants.Length)];
+            PickedContextIndex = UnityEngine.Random.Range(0, contextVariants.Length);
+            return contextVariants[PickedContextIndex];
         }
+
+        /// <summary>The picked context in Chinese, or null if there is no translation of it.</summary>
+        public string PickedContextZh =>
+            contextVariantsZh != null && PickedContextIndex >= 0 && PickedContextIndex < contextVariantsZh.Length
+                ? contextVariantsZh[PickedContextIndex]
+                : null;
 
         /// <summary>
         /// Catches authoring mistakes at load rather than mid-conversation.
@@ -125,6 +138,25 @@ namespace CAIVR.Dialogue
         public bool isEnd;
 
         public DialogueBranch[] branches;
+
+        // --- Chinese, and help for a student who is stuck ----------------------------------
+
+        /// <summary>The professor's line in Chinese, for the second line of the subtitles.</summary>
+        [TextArea(2, 5)] public string speakerLineZh;
+
+        /// <summary>The re-ask in Chinese.</summary>
+        [TextArea(1, 3)] public string repromptZh;
+
+        /// <summary>
+        /// Short suggestions for what the student could talk about next, shown when they seem stuck. One per
+        /// thing they could sensibly do here; <see cref="hintsZh"/> is the same list in Chinese, in the same order.
+        /// </summary>
+        public string[] hints;
+        public string[] hintsZh;
+
+        /// <summary>One thing the student could actually say, in English, shown if they stay stuck. With its Chinese.</summary>
+        public string hintExample;
+        public string hintExampleZh;
     }
 
     [Serializable]

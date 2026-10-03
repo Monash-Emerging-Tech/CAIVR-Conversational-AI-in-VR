@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using CAIVR.Speech;
 using UnityEngine;
 
@@ -114,6 +115,61 @@ namespace CAIVR.Dialogue
 
         public event Action Ended;
 
+        /// <summary>
+        /// The student seems to be stuck: they said nothing for a while, or said something the professor could not
+        /// use. Carries the node they are stuck on and how many times in a row that has happened here (1 the
+        /// first time). Raised as the professor starts her prompt, so help can appear while she is asking.
+        /// </summary>
+        public event Action<DialogueNode, int> StudentStuck;
+
+        /// <summary>How long a student with no microphone can leave the question hanging before the professor prompts them.</summary>
+        [SerializeField] float typedReplyStuckSeconds = 20f;
+
+        const string TakeYourTimeKey = "_take_your_time";
+
+        public ConversationAsset Conversation => _conversation;
+
+        /// <summary>The chosen background context in Chinese, or null.</summary>
+        public string CurrentContextNative => _conversation?.PickedContextZh;
+
+        readonly Dictionary<string, string> _native = new Dictionary<string, string>();
+        int _stuckCount;
+        float _lastActivity;
+        Coroutine _watchdog;
+
+        /// <summary>
+        /// The student's-language version of an English line, if one was authored: every scripted line and
+        /// re-ask in the conversation file, plus the fixed "take your time" lines. Lines made up on the spot by
+        /// the AI have none, and are translated separately.
+        /// </summary>
+        public bool TryGetNative(string english, out string native)
+        {
+            native = null;
+            if (string.IsNullOrWhiteSpace(english)) return false;
+
+            if (_native.TryGetValue(english.Trim(), out native) && !string.IsNullOrEmpty(native)) return true;
+
+            native = CAIVR.Menu.Loc.NativeForFixedLine(english.Trim());
+            return !string.IsNullOrEmpty(native);
+        }
+
+        void BuildNativeIndex()
+        {
+            _native.Clear();
+            if (_conversation?.nodes == null) return;
+
+            foreach (var node in _conversation.nodes)
+            {
+                if (node == null) continue;
+
+                if (!string.IsNullOrWhiteSpace(node.speakerLine) && !string.IsNullOrWhiteSpace(node.speakerLineZh))
+                    _native[node.speakerLine.Trim()] = node.speakerLineZh;
+
+                if (!string.IsNullOrWhiteSpace(node.reprompt) && !string.IsNullOrWhiteSpace(node.repromptZh))
+                    _native[node.reprompt.Trim()] = node.repromptZh;
+            }
+        }
+
         [Tooltip("Take the dialogue system choice from the main menu rather than the field above.")]
         [SerializeField] bool useMenuSettings = true;
 
@@ -220,6 +276,8 @@ namespace CAIVR.Dialogue
             if (_selector is LlmBranchSelector grounded)
                 grounded.SetConversation(_conversation);
 
+            BuildNativeIndex();
+
             CurrentContext = _conversation.PickContext();
             SetState(ConversationState.ShowingContext);
             ContextReady?.Invoke(CurrentContext);
@@ -260,6 +318,7 @@ namespace CAIVR.Dialogue
             _currentNode = node;
             _repromptCount = 0;
             _asideCount = 0;
+            _stuckCount = 0;
 
             if (node == null)
             {
@@ -330,6 +389,30 @@ namespace CAIVR.Dialogue
         {
             SetState(ConversationState.Listening);
             speech?.StartListening();
+
+            _lastActivity = Time.time;
+
+            // A microphone gives up on its own after a silence, which comes back here as a prompt. Typing has no
+            // such timeout, so without this a student who is not typing would be left looking at a quiet room.
+            if (_watchdog != null) StopCoroutine(_watchdog);
+            _watchdog = speech != null && speech.UsingKeyboardFallback ? StartCoroutine(WatchForSilence(_currentNode)) : null;
+        }
+
+        IEnumerator WatchForSilence(DialogueNode node)
+        {
+            while (State == ConversationState.Listening && _currentNode == node)
+            {
+                if (Time.time - _lastActivity > typedReplyStuckSeconds)
+                {
+                    _watchdog = null;
+                    StopListeningQuietly();
+                    StopAllCoroutines();
+                    StartCoroutine(Reprompt(node, silent: true));
+                    yield break;
+                }
+
+                yield return null;
+            }
         }
 
         /// <summary>
@@ -350,6 +433,7 @@ namespace CAIVR.Dialogue
         void OnPartial(string text)
         {
             if (State != ConversationState.Listening) return;
+            _lastActivity = Time.time;
             PartialTranscript?.Invoke(text);
         }
 
@@ -494,19 +578,34 @@ namespace CAIVR.Dialogue
             EnterNode(next);
         }
 
-        IEnumerator Reprompt(DialogueNode node)
+        /// <param name="silent">The student said nothing, as opposed to saying something that was not understood.</param>
+        IEnumerator Reprompt(DialogueNode node, bool silent = false)
         {
             SetState(ConversationState.Speaking);
 
+            _stuckCount++;
+            StudentStuck?.Invoke(node, _stuckCount);
+
             var hasOwnLine = !string.IsNullOrWhiteSpace(node.reprompt);
 
-            var line = hasOwnLine
-                ? node.reprompt
-                : "Sorry, I didn't catch that. Could you say it again?";
+            string line, clipKey;
 
-            var clipKey = hasOwnLine
-                ? $"{node.id}_reprompt"
-                : VoiceLinePlayer.FallbackRepromptKey;
+            if (silent && _stuckCount == 1)
+            {
+                // The first silence is met with kindness, not the question again: they may just need a moment.
+                line = CAIVR.Menu.Loc.English(CAIVR.Menu.Loc.TakeYourTime);
+                clipKey = TakeYourTimeKey;
+            }
+            else if (hasOwnLine)
+            {
+                line = node.reprompt;
+                clipKey = $"{node.id}_reprompt";
+            }
+            else
+            {
+                line = CAIVR.Menu.Loc.English(CAIVR.Menu.Loc.FallbackReprompt);
+                clipKey = VoiceLinePlayer.FallbackRepromptKey;
+            }
 
             yield return Speak(clipKey, line);
 
@@ -540,7 +639,7 @@ namespace CAIVR.Dialogue
             if (_currentNode == null) return;
 
             StopAllCoroutines();
-            StartCoroutine(Reprompt(_currentNode));
+            StartCoroutine(Reprompt(_currentNode, silent: true));
         }
 
         void OnSpeechError(string message)

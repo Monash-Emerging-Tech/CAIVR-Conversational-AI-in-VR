@@ -30,6 +30,9 @@ namespace CAIVR.VR
         [Tooltip("The small line at the foot of the page that says how to pick it up.")]
         [SerializeField] TextMeshProUGUI hint;
 
+        [Tooltip("The heading at the top of the page.")]
+        [SerializeField] TextMeshProUGUI heading;
+
         [Tooltip("If it falls this far below where it started, put it back on the table.")]
         [SerializeField] float respawnBelowMeters = 1f;
 
@@ -70,7 +73,10 @@ namespace CAIVR.VR
                 _body.useGravity = true;
             }
 
-            if (hint != null) hint.text = ExperienceRig.IsHeadset ? "Pick up to read" : "Click to read";
+            if (hint != null) hint.text = CAIVR.Menu.Loc.T(ExperienceRig.IsHeadset ? "notebook.pickup" : "notebook.click");
+            if (heading != null) heading.text = CAIVR.Menu.Loc.T("notebook.heading");
+            if (pageText != null && string.IsNullOrEmpty(runner != null ? runner.CurrentContext : null))
+                pageText.text = CAIVR.Menu.Loc.T("notebook.empty");
         }
 
         void OnEnable()
@@ -103,8 +109,15 @@ namespace CAIVR.VR
 
         void ShowContext(string context)
         {
-            // The page already has a "Background" heading of its own, so this is just the text.
-            if (pageText != null) pageText.text = context;
+            // The page already has a "Background" heading of its own, so this is just the text, in the
+            // student's language when their interface is in it.
+            if (pageText == null) return;
+
+            var native = runner != null ? runner.CurrentContextNative : null;
+            pageText.text = CAIVR.Menu.Loc.InterfaceNative && !string.IsNullOrEmpty(native) ? native : context;
+
+            if (heading != null) heading.text = CAIVR.Menu.Loc.T("notebook.heading");
+            if (hint != null) hint.text = CAIVR.Menu.Loc.T(ExperienceRig.IsHeadset ? "notebook.pickup" : "notebook.click");
         }
 
         void OnGrabbed(SelectEnterEventArgs args) => _releasedAt = -1f;

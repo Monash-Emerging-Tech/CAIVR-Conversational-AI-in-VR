@@ -34,6 +34,9 @@ namespace CAIVR.VR
         [Tooltip("It only starts to follow once your gaze leaves this cone, then catches up. 0 follows constantly.")]
         [SerializeField] float deadzoneDegrees;
 
+        [Tooltip("Held this many degrees below where you are looking, the way you hold a tablet. 0 is dead ahead.")]
+        [SerializeField] float lowerDegrees;
+
         [SerializeField] float minDistance = 0.45f;
         [SerializeField] float wallClearance = 0.12f;
 
@@ -46,13 +49,26 @@ namespace CAIVR.VR
 
         static readonly RaycastHit[] Hits = new RaycastHit[24];
 
-        public void Configure(float distance, float followSeconds, float deadzoneDegrees)
+        /// <param name="referenceDistance">The distance the canvas was sized for, or 0 to use <paramref name="distance"/>.</param>
+        public void Configure(float distance, float followSeconds, float deadzoneDegrees,
+                              float referenceDistance = 0f, float lowerDegrees = 0f)
         {
             this.distance = distance;
-            this.referenceDistance = distance;
+            this.referenceDistance = referenceDistance > 0f ? referenceDistance : distance;
             this.followSeconds = followSeconds;
             this.deadzoneDegrees = deadzoneDegrees;
+            this.lowerDegrees = lowerDegrees;
             _distance = distance;
+        }
+
+        /// <summary>
+        /// Holds it nearer or further, keeping the size it appears (it is scaled by distance over the reference).
+        /// A menu is read at arm's length in a headset, where it has to be reachable, and further on a monitor.
+        /// </summary>
+        public void SetDistance(float newDistance)
+        {
+            distance = newDistance;
+            _placed = false;
         }
 
         void OnEnable()
@@ -109,17 +125,26 @@ namespace CAIVR.VR
                 }
             }
 
-            var target = ClearDistance(_camera.position, _direction);
+            // Where it actually sits: the gaze direction, dropped a little if asked to be.
+            var placement = _direction;
+            if (Mathf.Abs(lowerDegrees) > 0.01f)
+            {
+                var side = Vector3.Cross(Vector3.up, _direction);
+                if (side.sqrMagnitude > 0.0001f)
+                    placement = Quaternion.AngleAxis(lowerDegrees, side.normalized) * _direction;
+            }
+
+            var target = ClearDistance(_camera.position, placement);
 
             // In front of a wall quickly, back out slowly. A late shrink is a
             // flash of text inside the wall; a late grow is nobody's problem.
             var rate = target < _distance ? 18f : 3f;
             _distance = dt <= 0f ? target : Mathf.Lerp(_distance, target, 1f - Mathf.Exp(-rate * dt));
 
-            transform.position = _camera.position + _direction * _distance;
+            transform.position = _camera.position + placement * _distance;
 
             // Level, facing the viewer: text stays upright when the head tilts.
-            transform.rotation = Quaternion.LookRotation(_direction, Vector3.up);
+            transform.rotation = Quaternion.LookRotation(placement, Vector3.up);
             transform.localScale = Vector3.one * (_distance / referenceDistance);
         }
 

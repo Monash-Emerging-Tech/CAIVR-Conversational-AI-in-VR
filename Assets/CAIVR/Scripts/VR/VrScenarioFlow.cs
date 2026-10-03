@@ -1,5 +1,6 @@
 using System.Collections;
 using CAIVR.Dialogue;
+using CAIVR.Menu;
 using CAIVR.Speech;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -68,11 +69,16 @@ namespace CAIVR.VR
 
             if (runner.State != ConversationState.ShowingContext)
             {
-                overlay.ShowCard("Could not start", "The conversation script failed to load. See the Console for details.");
+                overlay.ShowCard(Loc.T("card.error.title"), Loc.T("card.error.body"));
                 yield break;
             }
 
-            overlay.ShowCard("Your consultation", runner.CurrentContext);
+            // The background is shown in the student's language when the interface is.
+            var context = Loc.InterfaceNative && !string.IsNullOrEmpty(runner.CurrentContextNative)
+                ? runner.CurrentContextNative
+                : runner.CurrentContext;
+
+            overlay.ShowCard(Loc.T("card.title"), context);
 
             var started = false;
             yield return overlay.Countdown(runner.ContextDelaySeconds, () => started = true);

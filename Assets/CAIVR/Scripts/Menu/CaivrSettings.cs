@@ -44,6 +44,31 @@ namespace CAIVR.Menu
             set { PlayerPrefs.SetInt(SubtitlesKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
+        const string LanguageKey = "caivr.language";
+        const string LocalizeKey = "caivr.localize";
+
+        /// <summary>
+        /// The student's own language, for help along the way: 0 = English, 1 = Chinese. The professor still speaks
+        /// English, since that is the point of the practice. Anything other than English adds a translated second line
+        /// to the subtitles and shows hints in this language. See <see cref="Loc"/>.
+        /// </summary>
+        public static int NativeLanguage
+        {
+            get => PlayerPrefs.GetInt(LanguageKey, 0);
+            set { PlayerPrefs.SetInt(LanguageKey, value); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>
+        /// Whether the menu, the briefing card and the other interface text are shown in the native language too.
+        /// On by default, so choosing a language swaps everything; turn it off to keep an English interface and
+        /// still get translated subtitles and hints.
+        /// </summary>
+        public static bool LocalizeInterface
+        {
+            get => PlayerPrefs.GetInt(LocalizeKey, 1) == 1;
+            set { PlayerPrefs.SetInt(LocalizeKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
         const string EndpointKey = "caivr.llm.endpoint";
         const string ModelKey = "caivr.llm.model";
         const string ApiKeyKey = "caivr.llm.key";

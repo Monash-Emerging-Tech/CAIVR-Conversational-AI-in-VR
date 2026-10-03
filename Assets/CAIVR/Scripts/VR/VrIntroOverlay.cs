@@ -1,4 +1,5 @@
 using System.Collections;
+using CAIVR.Menu;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -40,6 +41,9 @@ namespace CAIVR.VR
         Image _fade;
         TextMeshProUGUI _title;
         TextMeshProUGUI _body;
+        TextMeshProUGUI _eyebrow;
+        TextMeshProUGUI _waitCaption;
+        TextMeshProUGUI _startLabel;
         RectTransform _countdownRoot;
         RectTransform _countdownFill;
         Button _startButton;
@@ -92,6 +96,12 @@ namespace CAIVR.VR
 
             _title.text = title;
             _body.text = body;
+
+            // The fixed words on the card follow the interface language too.
+            _eyebrow.text = Loc.T("card.eyebrow");
+            _waitCaption.text = Loc.T("card.wait");
+            _startLabel.text = Loc.T("card.start");
+
             _startButton.gameObject.SetActive(false);
             _countdownRoot.gameObject.SetActive(false);
             _cardCanvas.gameObject.SetActive(true);
@@ -173,7 +183,7 @@ namespace CAIVR.VR
             VrUi.Text(brand.transform, "Label", Layout.Fill(), "CAIVR", 24, MonashTheme.Text,
                 TextAlignmentOptions.Center, tracking: 5f);
 
-            VrUi.Eyebrow(face, "Eyebrow", Layout.TopLeft(56, 128, 600, 32), "Your situation");
+            _eyebrow = VrUi.Eyebrow(face, "Eyebrow", Layout.TopLeft(56, 128, 600, 32), "Your situation");
 
             _title = VrUi.Text(face, "Title", Layout.TopStretch(56, 162, 56, 66), "", 52,
                 MonashTheme.Text, TextAlignmentOptions.MidlineLeft);
@@ -184,7 +194,7 @@ namespace CAIVR.VR
             // Countdown, then Start. They share the same spot at the bottom.
             _countdownRoot = VrUi.Group(face, "Countdown", Layout.BottomStretch(56, 44, 56, 90));
 
-            VrUi.Text(_countdownRoot, "Caption", Layout.TopStretch(0, 0, 0, 36), "Take a moment to read this", 28,
+            _waitCaption = VrUi.Text(_countdownRoot, "Caption", Layout.TopStretch(0, 0, 0, 36), "Take a moment to read this", 28,
                 MonashTheme.TextDim, TextAlignmentOptions.MidlineLeft);
 
             var track = VrUi.Surface(_countdownRoot, "Track", Layout.BottomStretch(0, 8, 0, 14), MonashTheme.Border, 7f);
@@ -193,6 +203,7 @@ namespace CAIVR.VR
 
             _startButton = VrUi.PillButton(face, "StartButton", "Start consultation",
                 Layout.BottomCenter(520, 96, 40), null, ButtonStyle.Primary, 40);
+            _startLabel = _startButton.GetComponentInChildren<TextMeshProUGUI>();
             _startButton.gameObject.SetActive(false);
 
             _cardCanvas.gameObject.SetActive(false);

@@ -44,6 +44,8 @@ SCRIPT = REPO / "Assets/CAIVR/Resources/CAIVR/Conversations/consultation_demo.js
 VO_ROOT = REPO / "Assets/CAIVR/Resources/CAIVR"
 
 FALLBACK_REPROMPT = "Sorry, I didn't catch that. Could you say it again?"
+# Said when the student has been silent for a while, before the hints appear.
+TAKE_YOUR_TIME = "Take your time. What do you need?"
 
 
 def die(message):
@@ -324,6 +326,7 @@ def collect_lines(only=None):
 
     if not only:
         lines["_fallback_reprompt"] = FALLBACK_REPROMPT
+        lines["_take_your_time"] = TAKE_YOUR_TIME
 
     return lines
 

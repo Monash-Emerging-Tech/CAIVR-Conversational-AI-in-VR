@@ -1,4 +1,5 @@
 using CAIVR.Dialogue;
+using CAIVR.Menu;
 using CAIVR.Speech;
 using TMPro;
 using UnityEngine;
@@ -13,6 +14,8 @@ namespace CAIVR.VR
     /// They belong to the viewer rather than the room, so they are laid over the
     /// camera and not placed in the scene: they stay readable wherever the student
     /// looks and can never end up inside a wall.
+    ///
+    /// For a student who has chosen a native language, a second, translated line sits under the English one.
     ///
     /// Deliberately nothing else. No "your turn", no "thinking", no buttons, no
     /// toggle: the stakeholder wants the scenario to feel like a real conversation,
@@ -61,8 +64,16 @@ namespace CAIVR.VR
         CanvasGroup _captionGroup;
         CanvasGroup _noticeGroup;
         TextMeshProUGUI _caption;
+        TextMeshProUGUI _captionNative;
         RectTransform _box;
         string _sizedFor;
+        string _nativeLine;
+        LineTranslator _translator;
+
+        // The translated line is a shade cooler than the English, so the two read as a pair.
+        static readonly Color NativeColor = new Color(0.72f, 0.86f, 1f);
+        const float NativeSize = 24f;
+        const float LineGap = 6f;
         TextMeshProUGUI _notice;
 
         string _line = "";
@@ -75,6 +86,9 @@ namespace CAIVR.VR
         {
             if (runner == null) runner = FindFirstObjectByType<ConversationRunner>();
             if (speech == null) speech = FindFirstObjectByType<SpeechService>();
+
+            _translator = FindFirstObjectByType<LineTranslator>();
+            if (_translator == null) _translator = gameObject.AddComponent<LineTranslator>();
 
             Build();
         }
@@ -112,6 +126,17 @@ namespace CAIVR.VR
             _line = line;
             _lineShownAt = Time.unscaledTime;
             _speakingEndedAt = -1f;
+            _nativeLine = null;
+
+            if (!Loc.NativeActive || runner == null) return;
+
+            // Authored lines have an authored translation. A line the AI made up does not, so it is translated
+            // now and the second line appears when it arrives.
+            if (runner.TryGetNative(line, out var native)) _nativeLine = native;
+            else _translator.Request(line, Loc.Native, translated =>
+            {
+                if (_line == line) _nativeLine = translated;
+            });
         }
 
         void OnNotice(string message)
@@ -133,7 +158,7 @@ namespace CAIVR.VR
                 && speech != null && speech.UsingKeyboardFallback)
             {
                 _micWarned = true;
-                OnNotice("No microphone found, so you cannot reply.");
+                OnNotice(Loc.T("notice.nomic"));
             }
         }
 
@@ -153,11 +178,14 @@ namespace CAIVR.VR
 
             _captionGroup.alpha = Mathf.MoveTowards(_captionGroup.alpha, target, Time.unscaledDeltaTime / fadeSeconds);
 
-            if (_captionGroup.alpha > 0.01f && _sizedFor != _line)
+            var shown = Loc.NativeActive ? _line + "\n" + _nativeLine : _line;
+
+            if (_captionGroup.alpha > 0.01f && _sizedFor != shown)
             {
                 _caption.text = _line;
+                _captionNative.text = Loc.NativeActive ? _nativeLine : null;
                 SizeBoxToText();
-                _sizedFor = _line;
+                _sizedFor = shown;
             }
         }
 
@@ -168,14 +196,33 @@ namespace CAIVR.VR
         void SizeBoxToText()
         {
             var inner = maxWidth - PadX * 2f;
+            var native = Loc.NativeActive && !string.IsNullOrEmpty(_nativeLine) ? _nativeLine : null;
 
             var measured = _caption.GetPreferredValues(_line, inner, 0f);
-            var width = Mathf.Min(maxWidth, measured.x + PadX * 2f);
+            var width = measured.x;
+
+            if (native != null) width = Mathf.Max(width, _captionNative.GetPreferredValues(native, inner, 0f).x);
+            width = Mathf.Min(maxWidth, width + PadX * 2f);
 
             // Measure again at the width we settled on, so wrapping and height agree.
             var height = _caption.GetPreferredValues(_line, width - PadX * 2f, 0f).y;
+            var nativeHeight = native != null ? _captionNative.GetPreferredValues(native, width - PadX * 2f, 0f).y : 0f;
 
-            _box.sizeDelta = new Vector2(width, height + PadY * 2f);
+            _box.sizeDelta = new Vector2(width, height + (native != null ? LineGap + nativeHeight : 0f) + PadY * 2f);
+
+            PlaceLine(_caption.rectTransform, PadY, height);
+            _captionNative.gameObject.SetActive(native != null);
+            if (native != null) PlaceLine(_captionNative.rectTransform, PadY + height + LineGap, nativeHeight);
+        }
+
+        /// <summary>Pins a line to the top of the box, inset by the padding, at the given offset and height.</summary>
+        static void PlaceLine(RectTransform line, float top, float height)
+        {
+            line.anchorMin = new Vector2(0f, 1f);
+            line.anchorMax = new Vector2(1f, 1f);
+            line.pivot = new Vector2(0.5f, 1f);
+            line.offsetMin = new Vector2(PadX, -(top + height));
+            line.offsetMax = new Vector2(-PadX, -top);
         }
 
         void DrawNotice()
@@ -233,6 +280,12 @@ namespace CAIVR.VR
                 MonashTheme.Text, TextAlignmentOptions.Center, tracking: 0.8f);
 
             StyleCaptionType(_caption);
+
+            _captionNative = VrUi.Text(box.transform, "NativeLine", Layout.Fill(PadX, PadY, PadX, PadY), "", NativeSize,
+                NativeColor, TextAlignmentOptions.Center, tracking: 0.6f);
+            _captionNative.gameObject.SetActive(false);
+
+            StyleCaptionType(_captionNative);
         }
 
         /// <summary>
