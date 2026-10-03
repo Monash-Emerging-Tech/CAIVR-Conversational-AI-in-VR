@@ -369,8 +369,8 @@ namespace CAIVR.EditorTools
             // FaceRig's lid droop. Raised brows with open lids read as startled, so none are held here.
             face.SetResting(new[]
             {
-                new FaceRig.RestingShape { shape = "Mouth_Smile_L", weight = 0.08f },
-                new FaceRig.RestingShape { shape = "Mouth_Smile_R", weight = 0.08f },
+                new FaceRig.RestingShape { shape = "Mouth_Smile_L", weight = 0.05f },
+                new FaceRig.RestingShape { shape = "Mouth_Smile_R", weight = 0.05f },
             });
 
             EditorUtility.SetDirty(face);

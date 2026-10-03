@@ -66,8 +66,8 @@ namespace CAIVR.VR
         [Header("Feel")]
         [Tooltip("How strongly loudness opens the mouth.")]
         [SerializeField] float gain = 7f;
-        [SerializeField] float openSeconds = 0.05f;
-        [SerializeField] float closeSeconds = 0.10f;
+        [SerializeField] float openSeconds = 0.075f;
+        [SerializeField] float closeSeconds = 0.13f;
 
         [Tooltip("Speech never holds the mouth perfectly still, so add a small steady flutter.")]
         [SerializeField, Range(0f, 0.5f)] float flutter = 0.15f;
@@ -111,6 +111,7 @@ namespace CAIVR.VR
         float _lastBeat = -1f;
         float _closure;                // brief lip closure at the start of a p, b or m syllable
         float _dental;
+        bool _closureRising, _dentalRising;
 
         // The mouth's current shape, eased towards the current syllable's.
         float _jawNow, _openNow, _wideNow, _roundNow;
@@ -120,7 +121,7 @@ namespace CAIVR.VR
         float[] _clipSamples;
         Quaternion _jawClosed;
         Vector3 _mouthScale;
-        float _open;
+        float _open, _openVelocity;
 
         /// <summary>0 = closed, 1 = fully open. Read by anything else that wants to react to speech.</summary>
         public float Openness => _open;
@@ -206,10 +207,11 @@ namespace CAIVR.VR
                 target = Mathf.Clamp01(target);
             }
 
-            // Open quickly, close a little slower: a mouth that snaps shut between
-            // every syllable looks like a puppet.
+            // Open quickly, close a little slower: a mouth that snaps shut between every syllable looks
+            // like a puppet. A damped follow rather than a constant-speed ramp, so the jaw eases into each
+            // syllable instead of starting at full speed from rest.
             var seconds = target > _open ? openSeconds : closeSeconds;
-            _open = Mathf.MoveTowards(_open, target, Time.deltaTime / Mathf.Max(0.001f, seconds));
+            _open = Mathf.Clamp01(Mathf.SmoothDamp(_open, target, ref _openVelocity, Mathf.Max(0.005f, seconds * 0.45f)));
 
             EaseShape();
             Apply();
@@ -233,8 +235,8 @@ namespace CAIVR.VR
             _syllable++;
 
             Shape(syllable.Vowel, out _jawGoal, out _openGoal, out _wideGoal, out _roundGoal);
-            _closure = syllable.Closure ? 1f : 0f;
-            _dental = syllable.Dental ? 1f : 0f;
+            _closureRising = syllable.Closure;
+            _dentalRising = syllable.Dental;
         }
 
         float _jawGoal, _openGoal, _wideGoal, _roundGoal;
@@ -242,15 +244,21 @@ namespace CAIVR.VR
         /// <summary>The mouth glides to each new shape rather than snapping to it.</summary>
         void EaseShape()
         {
-            const float seconds = 0.05f;
+            const float seconds = 0.06f;
             _jawNow = Mathf.SmoothDamp(_jawNow, _jawGoal, ref _jawV, seconds);
             _openNow = Mathf.SmoothDamp(_openNow, _openGoal, ref _openV, seconds);
             _wideNow = Mathf.SmoothDamp(_wideNow, _wideGoal, ref _wideV, seconds);
             _roundNow = Mathf.SmoothDamp(_roundNow, _roundGoal, ref _roundV, seconds);
 
-            // The lip closure and the lip-to-teeth touch last only the start of a syllable.
-            _closure = Mathf.MoveTowards(_closure, 0f, Time.deltaTime / 0.09f);
-            _dental = Mathf.MoveTowards(_dental, 0f, Time.deltaTime / 0.12f);
+            // The lip closure and the lip-to-teeth touch last only the start of a syllable: they close over a
+            // few frames, then let go.
+            var dt = Time.deltaTime;
+
+            if (_closureRising) { _closure += dt / 0.04f; if (_closure >= 1f) { _closure = 1f; _closureRising = false; } }
+            else _closure = Mathf.MoveTowards(_closure, 0f, dt / 0.09f);
+
+            if (_dentalRising) { _dental += dt / 0.05f; if (_dental >= 1f) { _dental = 1f; _dentalRising = false; } }
+            else _dental = Mathf.MoveTowards(_dental, 0f, dt / 0.12f);
         }
 
         float Loudness()

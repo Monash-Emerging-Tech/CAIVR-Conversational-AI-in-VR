@@ -129,7 +129,9 @@ namespace CAIVR.VR
         bool _fadingOut;
 
         float _beat;
+        bool _beatRising;
         float _inhale;
+        bool _inhaling;
         float _lean, _leanVelocity;
         float _seed;
         float _shoulderBiasR, _shoulderBiasL;
@@ -174,11 +176,11 @@ namespace CAIVR.VR
 
         void OnPhaseChanged(ProfessorPhase phase)
         {
-            if (phase == ProfessorPhase.Speaking) _inhale = 1f;            // a breath in before she starts
+            if (phase == ProfessorPhase.Speaking) _inhaling = true;        // a breath in before she starts
             if (phase != ProfessorPhase.Speaking) _fadingOut = true;       // hands come down when she stops
         }
 
-        void OnEmphasis() => _beat = 1f;
+        void OnEmphasis() => _beatRising = true;
 
         /// <summary>Plays one of the built-in gestures now. For testing and for anything that wants to trigger one.</summary>
         public void PlayGesture(int index, float holdSeconds = -1f)
@@ -203,8 +205,20 @@ namespace CAIVR.VR
             var dt = Time.deltaTime;
             var phase = mood != null ? mood.Phase : ProfessorPhase.Waiting;
 
-            _beat = Mathf.MoveTowards(_beat, 0f, dt / 0.35f);
-            _inhale = Mathf.MoveTowards(_inhale, 0f, dt / 1.1f);
+            // Both of these ramp in over a few frames rather than appearing at full size, which would show as a twitch.
+            if (_beatRising)
+            {
+                _beat += dt / 0.08f;
+                if (_beat >= 1f) { _beat = 1f; _beatRising = false; }
+            }
+            else _beat = Mathf.MoveTowards(_beat, 0f, dt / 0.35f);
+
+            if (_inhaling)
+            {
+                _inhale += dt / 0.5f;
+                if (_inhale >= 1f) { _inhale = 1f; _inhaling = false; }
+            }
+            else _inhale = Mathf.MoveTowards(_inhale, 0f, dt / 1.1f);
 
             if (_gesture != null)
             {
