@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -30,6 +31,8 @@ namespace CAIVR.EditorTools
             Blended,
             /// <summary>Invisible except for its shine: the clear dome over the eye.</summary>
             Glass,
+            /// <summary>A soft dark gradient, no lighting: the shadow the lids and socket cast on the eyeball.</summary>
+            Shadow,
         }
 
         struct Recipe
@@ -50,7 +53,7 @@ namespace CAIVR.EditorTools
             var n = material.ToLowerInvariant();
 
             if (n.Contains("cornea")) return R(Kind.Glass, 0.85f);
-            if (n.Contains("eye_occlusion")) return R(Kind.Blended, 0f);        // not drawn, see Apply
+            if (n.Contains("eye_occlusion")) return R(Kind.Shadow, 0f);
             if (n.Contains("tearline")) return R(Kind.Blended, 1f);
             if (n.Contains("eyelash")) return R(Kind.Cutout, 0.15f, 0.40f);
             if (n.Contains("brow_base")) return R(Kind.Blended, 0.1f);
@@ -89,11 +92,6 @@ namespace CAIVR.EditorTools
 
                 renderer.sharedMaterials = materials;
 
-                // Character Creator darkens the corners of the eye with a shader of its own that
-                // reads the mesh's vertex colours. Lit has no equivalent, and without it the mesh is
-                // a flat dark smear around each eye, so it is left out.
-                if (renderer.name.Contains("EyeOcclusion")) renderer.enabled = false;
-
                 // These shapes never need to cast a shadow of their own: they are skin-thin.
                 if (renderer.name.Contains("TearLine") || renderer.name.Contains("Tear_Ducts")
                     || renderer.name.Contains("EyeOcclusion") || renderer.name.Contains("Brow"))
@@ -117,7 +115,11 @@ namespace CAIVR.EditorTools
 
             var recipe = RecipeFor(name);
 
-            var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+            var material = recipe.Kind == Kind.Shadow
+                ? BuildShadow(name)
+                : new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+
+            if (recipe.Kind == Kind.Shadow) return Save(material, existing, path);
 
             var diffuse = ProfessorTextures.Find(recipe.Diffuse ?? name + "_Diffuse");
             var normal = ProfessorTextures.Find(name + "_Normal");
@@ -150,18 +152,133 @@ namespace CAIVR.EditorTools
                 case Kind.Glass: SetGlass(material); break;
             }
 
-            // Updated in place when it already exists, so its identity (and everything in the scene
-            // that points at it) stays the same from one build to the next.
+            // The white of the eye is a little off-white in real life. Pure texture white next to skin is
+            // the first thing that makes an eye look pasted on.
+            if (name.StartsWith("Std_Eye_")) material.SetColor("_BaseColor", new Color(0.93f, 0.91f, 0.90f));
+
+            return Save(material, existing, path);
+        }
+
+        /// <summary>
+        /// Updated in place when it already exists, so its identity (and everything in the scene that
+        /// points at it) stays the same from one build to the next.
+        /// </summary>
+        static Material Save(Material material, Material existing, string path)
+        {
             if (existing != null)
             {
-                EditorUtility.CopySerialized(material, existing);
+                // Replacing a material wholesale also drops the tags and disabled passes Unity added to it
+                // on import, which shows up as a change in every material on every rebuild. So a material
+                // whose values are already right is left exactly as it is.
+                var unchanged = SameValues(material, existing);
+
+                if (!unchanged)
+                {
+                    EditorUtility.CopySerialized(material, existing);
+                    EditorUtility.SetDirty(existing);
+                }
+
                 Object.DestroyImmediate(material);
-                EditorUtility.SetDirty(existing);
                 return existing;
             }
 
             AssetDatabase.CreateAsset(material, path);
             return material;
+        }
+
+        static bool SameValues(Material a, Material b)
+        {
+            if (a.shader != b.shader || a.renderQueue != b.renderQueue) return false;
+
+            // Unity adds the premultiply keyword back to blended materials when it imports them, and keeps
+            // the hidden _MainTex in step with the base map. Neither is a difference worth rewriting for.
+            var keywordsA = a.shaderKeywords.Where(k => k != "_ALPHAPREMULTIPLY_ON").OrderBy(k => k).ToList();
+            var keywordsB = b.shaderKeywords.Where(k => k != "_ALPHAPREMULTIPLY_ON").OrderBy(k => k).ToList();
+            if (!keywordsA.SequenceEqual(keywordsB)) return false;
+
+            var shader = a.shader;
+            for (var i = 0; i < shader.GetPropertyCount(); i++)
+            {
+                var name = shader.GetPropertyName(i);
+                if (name == "_MainTex") continue;
+
+                switch (shader.GetPropertyType(i))
+                {
+                    case UnityEngine.Rendering.ShaderPropertyType.Float:
+                    case UnityEngine.Rendering.ShaderPropertyType.Range:
+                        if (!Mathf.Approximately(a.GetFloat(name), b.GetFloat(name))) return false;
+                        break;
+
+                    case UnityEngine.Rendering.ShaderPropertyType.Color:
+                        if (a.GetColor(name) != b.GetColor(name)) return false;
+                        break;
+
+                    case UnityEngine.Rendering.ShaderPropertyType.Vector:
+                        if (a.GetVector(name) != b.GetVector(name)) return false;
+                        break;
+
+                    case UnityEngine.Rendering.ShaderPropertyType.Texture:
+                        if (a.GetTexture(name) != b.GetTexture(name)) return false;
+                        break;
+                }
+            }
+
+            return true;
+        }
+
+        // --- the soft shadow around the eye ----------------------------------
+
+        /// <summary>How dark the shadow is where the lid meets the eye, 0..1.</summary>
+        const float ShadowStrength = 0.62f;
+
+        /// <summary>
+        /// Character Creator darkens the eyeball where the lids and the socket shade it, with a shader of its
+        /// own. Without that the white of the eye is lit as brightly as the forehead and the eye looks stuck
+        /// on. Its mesh is a thin sleeve between each lid and the eyeball: one coordinate runs around the
+        /// eye and the other from the lid edge (0) inwards across the eyeball (1). So the same effect is a
+        /// plain dark, unlit gradient along that coordinate, darkest at the lid edge and gone by about
+        /// two thirds of the way in.
+        /// </summary>
+        static Material BuildShadow(string name)
+        {
+            var material = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { name = name };
+
+            material.SetTexture("_BaseMap", ShadowGradient());
+            material.SetColor("_BaseColor", new Color(0.10f, 0.05f, 0.04f, 1f));    // a warm dark, not pure black
+            SetBlended(material, premultiplied: false);
+            return material;
+        }
+
+        const string ShadowGradientPath = "Assets/CAIVR/Professor/Textures/EyeShadow_Gradient.png";
+
+        static Texture2D ShadowGradient()
+        {
+            const int height = 64;
+            var texture = new Texture2D(8, height, TextureFormat.RGBA32, false);
+
+            for (var y = 0; y < height; y++)
+            {
+                var v = y / (height - 1f);
+                var alpha = ShadowStrength * (1f - Mathf.SmoothStep(0f, 1f, v / 0.66f));
+                for (var x = 0; x < 8; x++) texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+            }
+
+            // Written the same way every time, so a rebuild does not show up as a change.
+            File.WriteAllBytes(ShadowGradientPath, texture.EncodeToPNG());
+            Object.DestroyImmediate(texture);
+            AssetDatabase.ImportAsset(ShadowGradientPath, ImportAssetOptions.ForceSynchronousImport);
+
+            var importer = (TextureImporter)AssetImporter.GetAtPath(ShadowGradientPath);
+            if (importer != null)
+            {
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = false;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(ShadowGradientPath);
         }
 
         // --- URP Lit surface modes -------------------------------------------

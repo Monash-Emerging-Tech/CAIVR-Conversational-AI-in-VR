@@ -12,8 +12,10 @@ namespace CAIVR.EditorTools
     /// and eyelids moving.
     ///
     /// The model arrives in a T-pose with no animation, so the seated pose is worked
-    /// out here by aiming bones, and saved into the scene. Nothing is animated at
-    /// runtime except the face.
+    /// out here by aiming bones, and saved into the scene: forearms on the table, hands
+    /// relaxed with a loose curl in the fingers. At runtime the pose is brought to life
+    /// by <see cref="ProfessorGaze"/>, <see cref="ProfessorBody"/> and
+    /// <see cref="ProfessorExpression"/>, which only ever move away from this rest.
     ///
     /// Her materials come from the textures embedded in the model file, see
     /// <see cref="ProfessorTextures"/> and <see cref="ProfessorMaterials"/>.
@@ -31,14 +33,16 @@ namespace CAIVR.EditorTools
         const string JawBone = "CC_Base_JawRoot";
 
         /// <summary>How far the jaw swings at full volume.</summary>
-        const float JawOpenDegrees = 13f;
+        const float JawOpenDegrees = 15f;
 
         public static bool CharacterAvailable => AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPath) != null;
 
         /// <param name="seatPosition">On the floor, under her hips.</param>
         /// <param name="seatTopHeight">Height of the chair's seat above the floor.</param>
         /// <param name="facing">Horizontal direction she faces: toward the student.</param>
-        public static GameObject Build(Vector3 seatPosition, float seatTopHeight, Vector3 facing, VoiceLinePlayer voice)
+        /// <param name="tableTopHeight">World height of the table top her forearms rest on. Zero for no table.</param>
+        public static GameObject Build(Vector3 seatPosition, float seatTopHeight, Vector3 facing, VoiceLinePlayer voice,
+                                       float tableTopHeight = 0f)
         {
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPath);
             if (asset == null)
@@ -67,13 +71,16 @@ namespace CAIVR.EditorTools
 
             var bones = MapBones(character);
 
-            Seat(character, bones, root.transform, seatTopHeight);
+            Seat(character, bones, root.transform, seatTopHeight, tableTopHeight);
+            RelaxHands(character, root.transform, tableTopHeight);
 
             if (!ProfessorMaterials.Apply(character))
                 Debug.LogWarning("[CAIVR] The professor has no textures, so she will be plain white.");
 
+            FitClothing(character);
+
             var face = SetUpFace(character);
-            SetUpComponents(root, bones, face, voice);
+            SetUpComponents(root, bones, face, voice, tableTopHeight);
             LightFromFront(root.transform);
             AddFaceLight(root.transform);
 
@@ -102,22 +109,25 @@ namespace CAIVR.EditorTools
             var go = new GameObject("Professor Face Light");
             go.transform.SetParent(professor, false);
 
-            // In front of her, above and a little to one side, as a ceiling light would be.
-            go.transform.localPosition = new Vector3(-0.30f, 1.95f, 1.10f);
+            // In front of her at about the student's end of the table, a little above her face and to one side.
+            // Bright enough that her skin reads warm rather than muddy, and far and low enough that it strikes
+            // her upright face squarely but the horizontal table only at a glancing angle: closer and higher,
+            // the same light blew the tabletop out to white. Both were compared side by side on her face.
+            go.transform.localPosition = new Vector3(-0.40f, 1.75f, 2.20f);
             go.transform.LookAt(professor.position + Vector3.up * 1.12f);
 
             var light = go.AddComponent<Light>();
             light.type = LightType.Spot;
             light.color = new Color(1f, 0.94f, 0.86f);
             light.intensity = FaceLightIntensity;
-            light.range = 2.6f;
-            light.spotAngle = 60f;
-            light.innerSpotAngle = 30f;
+            light.range = 4.0f;
+            light.spotAngle = 40f;
+            light.innerSpotAngle = 24f;
             light.shadows = LightShadows.None;
             light.lightmapBakeType = LightmapBakeType.Realtime;
         }
 
-        const float FaceLightIntensity = 2.2f;
+        const float FaceLightIntensity = 7.5f;
 
         /// <summary>
         /// Makes sure the room's one real light is falling on her face.
@@ -194,7 +204,10 @@ namespace CAIVR.EditorTools
         /// in bone axes, because the model's bone axes are not the same from joint to
         /// joint and guessing them is how you get a knee bending backwards.
         /// </summary>
-        static void Seat(GameObject character, Dictionary<string, Transform> bones, Transform root, float seatTop)
+        /// <summary>How high above the table top the elbow joint sits when the forearm rests on it (the arm has thickness).</summary>
+        const float ElbowAboveTable = 0.032f;
+
+        static void Seat(GameObject character, Dictionary<string, Transform> bones, Transform root, float seatTop, float tableTop)
         {
             var hip = Bone(bones, Hip);
             if (hip == null) return;
@@ -231,14 +244,32 @@ namespace CAIVR.EditorTools
                 Aim(calf, foot, forward * 0.50f - up * 0.87f);
                 Aim(foot, toe, forward - up * 0.10f);
 
-                // Arms: upper arms down by the sides, forearms forward and a little up so the
-                // hands rest on the table.
+                // Arms.
                 var upperArm = Bone(bones, $"CC_Base_{side}_Upperarm");
                 var forearmBone = Bone(bones, $"CC_Base_{side}_Forearm");
                 var hand = Bone(bones, $"CC_Base_{side}_Hand");
 
-                Aim(upperArm, forearmBone, -up + right * sign * 0.12f + forward * 0.18f);
-                Aim(forearmBone, hand, forward + up * 0.28f - right * sign * 0.30f);
+                if (tableTop > 0f && upperArm != null && forearmBone != null && hand != null)
+                {
+                    // Forearms resting on the table, the way someone sits at a desk to talk to you. The elbow
+                    // is where the table top puts it, so how far the upper arm swings forward follows from how
+                    // far the shoulder is above the table. The hands are not mirror images: that alone is
+                    // what makes a seated figure look posed.
+                    var reach = Vector3.Distance(upperArm.position, forearmBone.position);
+                    var drop = upperArm.position.y - (tableTop + ElbowAboveTable);
+                    var cos = Mathf.Clamp(drop / reach, 0.3f, 1f);
+                    var sin = Mathf.Sqrt(1f - cos * cos);
+                    var inward = side == "L" ? 0.42f : 0.30f;
+
+                    Aim(upperArm, forearmBone, -up * cos + forward * sin + right * sign * 0.10f);
+                    Aim(forearmBone, hand, forward - right * sign * inward + up * 0.02f);
+                }
+                else
+                {
+                    // No table to rest on: upper arms down by the sides, forearms forward and a little up.
+                    Aim(upperArm, forearmBone, -up + right * sign * 0.12f + forward * 0.18f);
+                    Aim(forearmBone, hand, forward + up * 0.28f - right * sign * 0.30f);
+                }
 
                 // The arm swings changed which way the palm faces. Turn the forearm about its
                 // own length until the palm faces down again.
@@ -249,6 +280,72 @@ namespace CAIVR.EditorTools
                     var angle = Vector3.SignedAngle(
                         Vector3.ProjectOnPlane(palmNow, axis), Vector3.ProjectOnPlane(Vector3.down, axis), axis);
                     forearmBone.rotation = Quaternion.AngleAxis(angle, axis) * forearmBone.rotation;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gives each hand the loose curl of a hand at ease and settles it on the table. The model's fingers
+        /// are as straight and splayed as in its modelling pose, which is the stiffest thing about a seated figure.
+        /// </summary>
+        static void RelaxHands(GameObject character, Transform root, float tableTop)
+        {
+            var map = new BoneMap(character.transform);
+
+            foreach (var side in new[] { 'L', 'R' })
+            {
+                var arm = ArmRig.Create(map, side, root);
+                if (arm == null) continue;
+
+                arm.RelaxFingers();
+                if (tableTop > 0f) arm.RestOnTable(tableTop);
+            }
+        }
+
+        // --- clothing --------------------------------------------------------
+
+        const string FittedMeshFolder = "Assets/CAIVR/Professor/Meshes";
+
+        /// <summary>
+        /// Pushes the shirt a few millimetres off the body. Posed with her forearms on the table, the arm's skin
+        /// shows through the rolled sleeve as a brown patch, because the model's clothes sit right on the
+        /// skin. The shirt is copied, moved outwards along its own surface normals and saved, so the
+        /// model file itself is untouched.
+        /// </summary>
+        static void FitClothing(GameObject character)
+        {
+            const float outward = 0.005f;
+
+            foreach (var renderer in character.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                if (!renderer.name.Contains("shirt") || renderer.sharedMesh == null) continue;
+
+                var fitted = Object.Instantiate(renderer.sharedMesh);
+                fitted.name = renderer.sharedMesh.name + " fitted";
+
+                var vertices = fitted.vertices;
+                var normals = fitted.normals;
+                if (normals.Length != vertices.Length) { Object.DestroyImmediate(fitted); continue; }
+
+                for (var i = 0; i < vertices.Length; i++) vertices[i] += normals[i] * outward;
+
+                fitted.vertices = vertices;
+                fitted.RecalculateBounds();
+
+                System.IO.Directory.CreateDirectory(FittedMeshFolder);
+                var path = $"{FittedMeshFolder}/{fitted.name}.asset";
+                var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+
+                if (existing != null)
+                {
+                    EditorUtility.CopySerialized(fitted, existing);
+                    Object.DestroyImmediate(fitted);
+                    renderer.sharedMesh = existing;
+                }
+                else
+                {
+                    AssetDatabase.CreateAsset(fitted, path);
+                    renderer.sharedMesh = fitted;
                 }
             }
         }
@@ -267,27 +364,25 @@ namespace CAIVR.EditorTools
 
             face.SetMeshes(meshes.ToArray());
 
-            // Calm and attentive: a slight smile, lifted cheeks, softly raised inner brows. All
-            // small. The point is to take the stern edge off a neutral face, not to make her grin.
+            // Calm and attentive: the faintest smile. The model's all-zero face is stern with wide, staring
+            // lids, so everything else comes from ProfessorExpression, which is always moving, and from
+            // FaceRig's lid droop. Raised brows with open lids read as startled, so none are held here.
             face.SetResting(new[]
             {
-                new FaceRig.RestingShape { shape = "Mouth_Smile_L", weight = 0.22f },
-                new FaceRig.RestingShape { shape = "Mouth_Smile_R", weight = 0.22f },
-                new FaceRig.RestingShape { shape = "Cheek_Raise_L", weight = 0.10f },
-                new FaceRig.RestingShape { shape = "Cheek_Raise_R", weight = 0.10f },
-                new FaceRig.RestingShape { shape = "Brow_Raise_Inner_L", weight = 0.14f },
-                new FaceRig.RestingShape { shape = "Brow_Raise_Inner_R", weight = 0.14f },
+                new FaceRig.RestingShape { shape = "Mouth_Smile_L", weight = 0.08f },
+                new FaceRig.RestingShape { shape = "Mouth_Smile_R", weight = 0.08f },
             });
 
             EditorUtility.SetDirty(face);
             return face;
         }
 
-        static void SetUpComponents(GameObject root, Dictionary<string, Transform> bones, FaceRig face, VoiceLinePlayer voice)
+        static void SetUpComponents(GameObject root, Dictionary<string, Transform> bones, FaceRig face, VoiceLinePlayer voice,
+                                    float tableTopHeight)
         {
             var head = Bone(bones, Head);
 
-            // Her voice comes from her head, and the head turns to follow the student.
+            // Her voice comes from her head.
             var avatar = root.AddComponent<ProfessorAvatar>();
             SetRef(avatar, "voice", voice);
             SetRef(avatar, "head", head != null ? head : root.transform);
@@ -295,6 +390,15 @@ namespace CAIVR.EditorTools
             var lipSync = root.AddComponent<LipSyncDriver>();
             SetRef(lipSync, "voice", voice);
             SetRef(lipSync, "faceRig", face);
+
+            // She is alive: she follows the conversation, looks at the student, breathes, gestures and
+            // reacts. These find each other and the conversation themselves when the scene starts.
+            root.AddComponent<ProfessorMood>();
+            root.AddComponent<ProfessorGaze>();
+            root.AddComponent<ProfessorExpression>();
+
+            var body = root.AddComponent<ProfessorBody>();
+            SetFloat(body, "tableTopHeight", tableTopHeight);
 
             // On this model the jaw is a real bone: it carries the chin, the teeth, the tongue and
             // the skin around the mouth with it. The facial shapes then part the lips and round them.

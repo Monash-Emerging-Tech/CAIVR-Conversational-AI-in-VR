@@ -119,6 +119,24 @@ namespace CAIVR.VR
 
         // --- canvases --------------------------------------------------------
 
+        // XR Interaction Toolkit's tracked-device raycaster registers itself in a static table when it
+        // wakes and removes itself when it is destroyed, but its OnDisable looks itself up again. When Play
+        // mode ends the editor can destroy it first, and the lookup throws a KeyNotFoundException for every
+        // canvas (the briefing page, the fade). Switching the raycasters off a moment earlier, while they are
+        // still registered, lets that tidy-up run in the right order.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReleaseRaycastersOnQuit()
+        {
+            Application.quitting -= ReleaseRaycasters;
+            Application.quitting += ReleaseRaycasters;
+        }
+
+        static void ReleaseRaycasters()
+        {
+            foreach (var raycaster in Object.FindObjectsByType<TrackedDeviceGraphicRaycaster>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                raycaster.enabled = false;
+        }
+
         /// <summary>
         /// Creates a world-space canvas, <paramref name="widthMeters"/> wide. At
         /// 1000 pixels per metre one pixel is one millimetre, so a 56 px font is a

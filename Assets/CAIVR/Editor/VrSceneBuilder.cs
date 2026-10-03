@@ -167,6 +167,9 @@ namespace CAIVR.EditorTools
         const float NotebookLeft = 0.44f;
         const float TableTopHeight = 0.76f;
 
+        /// <summary>The consultation table's surface, measured from the room model. The professor's forearms rest on it.</summary>
+        const float TableSurfaceHeight = 0.74f;
+
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
         static Vector3 OnFloor(Vector3 v) { v.y = 0f; return v; }
 
@@ -198,6 +201,40 @@ namespace CAIVR.EditorTools
 
         [MenuItem("CAIVR/VR/Create VR Consultation Scene", priority = 100)]
         public static void Create() => Build();
+
+        /// <summary>
+        /// Puts a freshly built professor into the existing scene without regenerating the rest. The full
+        /// build re-bakes the room's lighting, which takes a while and rewrites its lightmaps; the
+        /// professor is not part of the baked light, so changes to her do not need any of that.
+        /// </summary>
+        [MenuItem("CAIVR/VR/Rebuild Professor Only", priority = 101)]
+        public static void RebuildProfessor()
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+
+            if (scene.path != OutputScene)
+            {
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+                if (!File.Exists(OutputScene))
+                {
+                    Debug.LogError($"[CAIVR] {OutputScene} does not exist yet. Run Create VR Consultation Scene first.");
+                    return;
+                }
+
+                scene = EditorSceneManager.OpenScene(OutputScene, OpenSceneMode.Single);
+            }
+
+            ResolveSpots();
+
+            var existing = GameObject.Find("Professor");
+            if (existing != null) Object.DestroyImmediate(existing);
+
+            AddProfessor(Object.FindFirstObjectByType<VoiceLinePlayer>());
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("[CAIVR] Professor rebuilt in the consultation scene.");
+        }
 
         static void Build()
         {
@@ -528,10 +565,10 @@ namespace CAIVR.EditorTools
 
         static void AddProfessor(VoiceLinePlayer voice)
         {
-            // Dr Ellery, the Character Creator model, sat in the chair and facing the student.
-            // See ProfessorBuilder for how she is posed and why her colours are flat for now.
+            // Dr Ellery, the Character Creator model, sat in the chair and facing the student with her
+            // forearms on the table. See ProfessorBuilder for how she is posed and brought to life.
             var facing = StudentSpot - ProfessorSpot;
-            ProfessorBuilder.Build(ProfessorSpot, ProfessorSeatTop, facing, voice);
+            ProfessorBuilder.Build(ProfessorSpot, ProfessorSeatTop, facing, voice, TableSurfaceHeight);
         }
 
         // --- UI --------------------------------------------------------------
