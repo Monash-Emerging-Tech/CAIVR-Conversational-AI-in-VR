@@ -118,13 +118,73 @@ namespace CAIVR.EditorTools
         /// </summary>
         static void ResolveSpots()
         {
-            StudentSpot = Spot(StudentMarker, DefaultStudent);
-            ProfessorSpot = Spot(ProfessorMarker, DefaultProfessor);
-            NotebookSpot = Spot(NotebookMarker, DefaultNotebook);
+            // 1. Marker objects in the room scene, if its author placed any: always win.
+            // 2. Otherwise the room's own chairs: the student on the west end, the professor
+            //    straight across the table. The room has been re-exported and moved before, and
+            //    working from its chairs means a move or a re-export needs no change here.
+            // 3. Otherwise the measured positions for the original blockout.
+            var studentSeat = FindSeat(StudentSeatName);
+            var professorSeat = FindSeat(ProfessorSeatName);
+            var chairsFound = studentSeat.HasValue && professorSeat.HasValue;
+
+            var across = chairsFound ? Flat(professorSeat.Value - studentSeat.Value) : Vector3.right;
+            if (across.sqrMagnitude < 0.01f) across = Vector3.right;
+            across.Normalize();
+
+            // Where a seated head sits relative to the centre of the chair it is on, measured
+            // in the blockout: slightly back from the chair's centre, away from the table.
+            var student = chairsFound ? OnFloor(studentSeat.Value) - across * StudentBackFromChair : DefaultStudent;
+            var professor = chairsFound ? OnFloor(professorSeat.Value) + across * ProfessorBackFromChair : DefaultProfessor;
+
+            StudentSpot = Spot(StudentMarker, student);
+            ProfessorSpot = Spot(ProfessorMarker, professor);
+
+            // On the student's left, a little way across the table, clear of the menu.
+            var left = Vector3.Cross(across, Vector3.up);
+            var notebook = chairsFound
+                ? StudentSpot + across * NotebookAhead + left * NotebookLeft
+                : DefaultNotebook;
+            notebook.y = TableTopHeight;
+            NotebookSpot = Spot(NotebookMarker, notebook);
 
             var flat = ProfessorSpot - StudentSpot;
             flat.y = 0f;
             Forward = flat.sqrMagnitude > 0.01f ? flat.normalized : Vector3.right;
+
+            if (chairsFound)
+                Debug.Log($"[CAIVR] Seating from the room's own chairs ({StudentSeatName} and {ProfessorSeatName}): " +
+                          $"student at {StudentSpot}, professor at {ProfessorSpot}.");
+        }
+
+        // The chairs, by the names the room gives them. The student takes the west end of the
+        // table and the professor sits straight across from them.
+        const string StudentSeatName = "Seat3";
+        const string ProfessorSeatName = "Seat2";
+
+        const float StudentBackFromChair = 0.27f;
+        const float ProfessorBackFromChair = 0.15f;
+        const float NotebookAhead = 0.45f;
+        const float NotebookLeft = 0.44f;
+        const float TableTopHeight = 0.76f;
+
+        static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
+        static Vector3 OnFloor(Vector3 v) { v.y = 0f; return v; }
+
+        /// <summary>Centre of the named chair's seat in the current scene, if it exists.</summary>
+        static Vector3? FindSeat(string name)
+        {
+            var environment = GameObject.Find("Consultation_Env");
+            if (environment == null) return null;
+
+            foreach (var t in environment.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name != name) continue;
+
+                var renderer = t.GetComponent<Renderer>();
+                if (renderer != null) return renderer.bounds.center;
+            }
+
+            return null;
         }
 
         static Vector3 Spot(string markerName, Vector3 fallback)
@@ -167,6 +227,11 @@ namespace CAIVR.EditorTools
             EnsureUiAssets();
 
             AssetDatabase.DeleteAsset(output);
+
+            // The previous bake's lightmaps belong to the scene being replaced.
+            var staleLighting = Path.ChangeExtension(output, null);
+            if (AssetDatabase.IsValidFolder(staleLighting)) AssetDatabase.DeleteAsset(staleLighting);
+
             AssetDatabase.CopyAsset(source, output);
             var scene = EditorSceneManager.OpenScene(output, OpenSceneMode.Single);
 
@@ -176,6 +241,7 @@ namespace CAIVR.EditorTools
             // The room has no colliders as modelled. Without them the notebook falls
             // through the table, and the head-locked UI cannot tell where the walls are.
             var environment = AddEnvironmentColliders();
+            var lightingPrepared = RoomLighting.Prepare(environment);
 
             AddRigs(scene, environment);
 
@@ -191,6 +257,10 @@ namespace CAIVR.EditorTools
             RegisterInBuildSettings(output);
 
             Debug.Log($"[CAIVR] Consultation scene created at {output}.");
+
+            // Baked light has to be baked: until it is, the room has no light of its own. The bake runs
+            // in the background and saves the scene when it is done.
+            if (lightingPrepared) RoomLighting.BakeAsync(scene);
         }
 
         /// <summary>Removes the old generated rig scene, and its build settings entry, if present.</summary>
