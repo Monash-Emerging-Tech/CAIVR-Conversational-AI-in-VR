@@ -31,6 +31,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import re
 import struct
 import sys
@@ -46,7 +47,9 @@ import soundfile as sf
 
 REPO = Path(__file__).resolve().parent.parent
 HERE = Path(__file__).resolve().parent
-CACHE_DIR = REPO / "Temp" / "VoiceCache"
+# Not under the project's Temp/: Unity empties that folder every time it opens the project, which
+# would throw the whole cache away. This lives in the user's profile instead, outside the repo.
+CACHE_DIR = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / ".cache")) / "CAIVR" / "VoiceCache"
 CONVERSATION = REPO / "Assets/CAIVR/Resources/CAIVR/Conversations/consultation_demo.json"
 
 WARM = ("A warm, calm woman in her early forties with a soft Australian accent, a kind university "
@@ -379,7 +382,7 @@ def load_model():
 
 
 def main():
-    global DEFAULT_VOICE
+    global DEFAULT_VOICE, CACHE_DIR
     # Without this, status lines sit in a buffer when output is redirected to a file or a launcher.
     sys.stdout.reconfigure(line_buffering=True)
     parser = argparse.ArgumentParser()
@@ -388,8 +391,11 @@ def main():
     parser.add_argument("--voice", default=DEFAULT_VOICE, choices=sorted(VOICES))
     parser.add_argument("--prewarm", action="store_true", help="synthesise the scripted lines in the background")
     parser.add_argument("--steps", type=int, help="override quality/speed for every voice (6 faster, 10 default)")
+    parser.add_argument("--cache-dir", type=Path, help=f"where finished lines are kept (default {CACHE_DIR})")
     args = parser.parse_args()
 
+    if args.cache_dir:
+        CACHE_DIR = args.cache_dir
     DEFAULT_VOICE = args.voice
     if args.steps:
         for v in VOICES.values():
