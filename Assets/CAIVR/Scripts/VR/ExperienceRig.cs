@@ -4,6 +4,7 @@ using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.XR;
+using UnityEngine.XR.Management;
 
 namespace CAIVR.VR
 {
@@ -253,7 +254,11 @@ namespace CAIVR.VR
                 if (display.running) return true;
             }
 
-            return XRSettings.isDeviceActive;
+            if (XRSettings.isDeviceActive) return true;
+            
+            var manager = XRGeneralSettings.Instance != null ? XRGeneralSettings.Instance.Manager : null;
+            return manager != null && manager.activeLoader != null
+                && manager.activeLoader.GetLoadedSubsystem<XRDisplaySubsystem>() != null;
         }
     }
 }
