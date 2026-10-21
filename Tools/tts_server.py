@@ -2,6 +2,10 @@
 """
 Local TTS service for CAIVR.
 
+SUPERSEDED by Tools/voice_server.py (GPU voice, streamed, cached). The game no longer calls this. It is
+kept as a lightweight edge-tts option and needs `python -m pip install -U edge-tts`: versions before 7.3
+get HTTP 403 from Microsoft.
+
 Unity POSTs text, gets MP3 back. Exists so lines that were never authored -
 anything a language model generates mid-conversation - can still be spoken in
 the professor's voice, without baking them ahead of time.
