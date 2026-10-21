@@ -266,6 +266,11 @@ namespace CAIVR.VR
             var source = voice != null ? voice.Source : null;
             if (source == null || !source.isPlaying || source.clip == null) return 0f;
 
+            // A live line streams in as it is spoken, so its clip has no data to read back.
+            // The player measures the loudness on the way to the speaker; follow that.
+            var streamed = voice.StreamLoudness;
+            if (streamed >= 0f) return Mathf.Clamp01(streamed * gain);
+
             var rms = RmsFromClip(source);
 
             // Compressed or streamed clips cannot be read directly; fall back to

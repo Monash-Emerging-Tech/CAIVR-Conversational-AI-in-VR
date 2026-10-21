@@ -105,17 +105,26 @@ namespace CAIVR.Menu
                     .OrderBy(name => name)
                     .ToArray();
 
-                if (found.Length > 0) return found;
+                if (found.Length > 0) return LiveVoiceSets.Concat(found).ToArray();
             }
 #endif
-            return new[] { "CAIVR/VO_edge", "CAIVR/VO_sapi" };
+            return LiveVoiceSets.Concat(new[] { "CAIVR/VO_edge", "CAIVR/VO_sapi" }).ToArray();
         }
+
+        /// <summary>Voices spoken just in time by Tools/voice_server.py. Listed first: they are the real voice.</summary>
+        static readonly string[] LiveVoiceSets =
+        {
+            CaivrSettings.LiveVoicePrefix + "voxcpm_warm",
+            CaivrSettings.LiveVoicePrefix + "voxcpm_warm_locked",
+        };
 
         public static string PrettyVoiceSet(string resourcePath)
         {
             var name = resourcePath.Replace("CAIVR/VO_", "");
             return name switch
             {
+                "live/voxcpm_warm" => "Warm (en-AU, live)",
+                "live/voxcpm_warm_locked" => "Warm, steady (en-AU, live)",
                 "edge" => "Natasha (en-AU, neural)",
                 "sapi" => "Zira (en-US, robotic)",
                 _ => name,

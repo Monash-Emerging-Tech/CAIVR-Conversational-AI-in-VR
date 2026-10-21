@@ -14,7 +14,8 @@ namespace CAIVR.Menu
     {
         const string MicKey = "caivr.microphone";
         const string SelectorKey = "caivr.selector";
-        const string VoiceSetKey = "caivr.voiceset";
+        // v2: voices became live by default, so an old baked-set choice must not carry over.
+        const string VoiceSetKey = "caivr.voiceset.v2";
         // v2: subtitles became opt-in, so the old stored value must not carry over.
         const string SubtitlesKey = "caivr.subtitles.v2";
 
@@ -32,10 +33,28 @@ namespace CAIVR.Menu
             set { PlayerPrefs.SetInt(SelectorKey, value); PlayerPrefs.Save(); }
         }
 
+        /// <summary>
+        /// A voice set is either "live/&lt;voice&gt;", spoken just in time by the voice server, or a baked
+        /// Resources folder such as "CAIVR/VO_edge".
+        /// </summary>
         public static string VoiceSet
         {
-            get => PlayerPrefs.GetString(VoiceSetKey, "CAIVR/VO_edge");
+            get => PlayerPrefs.GetString(VoiceSetKey, LiveVoicePrefix + "voxcpm_warm");
             set { PlayerPrefs.SetString(VoiceSetKey, value); PlayerPrefs.Save(); }
+        }
+
+        public const string LiveVoicePrefix = "live/";
+
+        const string VoiceServerKey = "caivr.voice.server";
+
+        /// <summary>
+        /// Where Tools/voice_server.py is listening. A Quest cannot see this PC's localhost, so it needs the
+        /// PC's address on the local network here.
+        /// </summary>
+        public static string VoiceServer
+        {
+            get => PlayerPrefs.GetString(VoiceServerKey, "http://127.0.0.1:5111");
+            set { PlayerPrefs.SetString(VoiceServerKey, value ?? ""); PlayerPrefs.Save(); }
         }
 
         public static bool SubtitlesEnabled

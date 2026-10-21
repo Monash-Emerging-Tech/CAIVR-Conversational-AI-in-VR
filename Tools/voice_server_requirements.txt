@@ -1,0 +1,9 @@
+# Live voice server. Use a venv with Python 3.12 (VoxCPM2 needs < 3.13).
+#
+# PyTorch first, as a CUDA build. The default PyPI wheel on Windows is CPU-only and far too slow:
+#   python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+# Then:
+#   python -m pip install -r Tools/voice_server_requirements.txt
+voxcpm
+soundfile
+numpy
